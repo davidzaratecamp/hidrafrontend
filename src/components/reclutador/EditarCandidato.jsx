@@ -45,6 +45,8 @@ export default function EditarCandidato() {
       
       const candidatoInfo = candidatoData.candidato
       setCandidato(candidatoInfo)
+      console.log('Catálogos en EditarCandidato:', catalogosData)
+      console.log('Observaciones de llamada en EditarCandidato:', catalogosData.observaciones_llamada)
       setCatalogos(catalogosData)
       
       setFormData({

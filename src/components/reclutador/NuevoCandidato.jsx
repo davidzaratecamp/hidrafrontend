@@ -37,6 +37,7 @@ export default function NuevoCandidato() {
     try {
       const data = await ApiService.getCatalogos()
       console.log('Catálogos cargados:', data)
+      console.log('Observaciones de llamada:', data.observaciones_llamada)
       setCatalogos(data)
     } catch (error) {
       console.error('Error cargando catálogos:', error)
