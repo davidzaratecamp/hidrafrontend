@@ -80,9 +80,8 @@ export default function NuevoCandidato() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validar campos requeridos
-    const requiredFields = ['nacionalidad', 'tipo_documento', 'numero_documento', 
-                           'primer_apellido', 'primer_nombre', 'email_personal', 
+    // Validar campos requeridos (cédula y email ahora opcionales)
+    const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
                            'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento']
     
     for (const field of requiredFields) {
