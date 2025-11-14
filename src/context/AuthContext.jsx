@@ -80,7 +80,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/verificar-token', {
+      const response = await fetch('http://200.91.204.54/api/auth/verificar-token', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -114,7 +114,7 @@ export function AuthProvider({ children }) {
     dispatch({ type: 'LOGIN_START' })
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch('http://200.91.204.54/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
