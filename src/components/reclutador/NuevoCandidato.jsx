@@ -560,7 +560,10 @@ export default function NuevoCandidato() {
                     >
                       <option value="">Selecciona observación</option>
                       {catalogos.observaciones_llamada?.length > 0 ? (
-                        catalogos.observaciones_llamada.map((obs) => (
+                        [
+                          ...catalogos.observaciones_llamada,
+                          ...(catalogos.observaciones_llamada.find(obs => obs.value === 'No apto') ? [] : [{ value: 'No apto', label: 'No apto' }])
+                        ].map((obs) => (
                           <option key={obs.value} value={obs.value}>
                             {obs.label}
                           </option>
