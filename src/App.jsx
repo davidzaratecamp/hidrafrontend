@@ -6,6 +6,7 @@ import Dashboard from './components/reclutador/Dashboard'
 import Estadisticas from './components/reclutador/Estadisticas'
 import ListaCandidatos from './components/reclutador/ListaCandidatos'
 import NuevoCandidato from './components/reclutador/NuevoCandidato'
+import EditarCandidato from './components/reclutador/EditarCandidato'
 import PerfilCandidato from './components/reclutador/PerfilCandidato'
 import CandidatosSeleccion from './components/seleccion/CandidatosSeleccion'
 import HojaVida from './components/candidato/HojaVida'
@@ -57,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute permission="crear_candidatos">
                   <NuevoCandidato />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hydra/reclutador/editar-candidato/:candidatoId" 
+              element={
+                <ProtectedRoute permission="editar_candidatos">
+                  <EditarCandidato />
                 </ProtectedRoute>
               } 
             />

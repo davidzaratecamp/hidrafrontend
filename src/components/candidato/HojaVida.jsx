@@ -81,16 +81,16 @@ export default function HojaVida() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">Formulario de Hoja de Vida</h1>
-                <p className="text-blue-100">Paso 1 de 6 - Información básica</p>
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 sm:p-8">
+            <div className="flex items-center justify-between flex-col sm:flex-row text-center sm:text-left">
+              <div className="mb-4 sm:mb-0">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Formulario de Hoja de Vida</h1>
+                <p className="text-blue-100 text-sm sm:text-base">Paso 1 de 6 - Información básica</p>
               </div>
-              <FileText className="h-12 w-12 text-blue-200" />
+              <FileText className="h-8 w-8 sm:h-12 sm:w-12 text-blue-200" />
             </div>
             
             <div className="mt-6 bg-blue-700 bg-opacity-50 rounded-lg p-4">
@@ -107,10 +107,10 @@ export default function HojaVida() {
             </div>
           </div>
 
-          <div className="p-8">
-            <div className="grid md:grid-cols-2 gap-8 mb-8">
+          <div className="p-4 sm:p-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <User className="h-5 w-5 mr-2 text-blue-600" />
                   Información Personal
                 </h2>
@@ -136,7 +136,7 @@ export default function HojaVida() {
               </div>
 
               <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Building className="h-5 w-5 mr-2 text-blue-600" />
                   Información del Proceso
                 </h2>
@@ -172,8 +172,8 @@ export default function HojaVida() {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="bg-blue-50 rounded-lg p-6 mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <div className="bg-blue-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   Información Requerida
                 </h2>
                 
@@ -185,7 +185,7 @@ export default function HojaVida() {
                     value={formData.estado_civil}
                     onChange={(e) => setFormData({...formData, estado_civil: e.target.value})}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="input-field"
                   >
                     <option value="">Selecciona tu estado civil</option>
                     {catalogos.estados_civiles?.map((estado) => (

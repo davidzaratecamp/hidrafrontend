@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { UserPlus, Building, MapPin, Phone, Mail, FileText, Save, ArrowLeft, User, Briefcase, MessageSquare } from 'lucide-react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Save, ArrowLeft, User, Building, MapPin, Phone, Mail, MessageSquare } from 'lucide-react'
 import Sidebar from './Sidebar'
 import ApiService from '../../services/api'
 
-export default function NuevoCandidato() {
+export default function EditarCandidato() {
+  const { candidatoId } = useParams()
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [candidato, setCandidato] = useState(null)
   const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
     // Datos principales
@@ -30,16 +33,42 @@ export default function NuevoCandidato() {
   })
 
   useEffect(() => {
-    cargarCatalogos()
-  }, [])
+    cargarDatos()
+  }, [candidatoId])
 
-  const cargarCatalogos = async () => {
+  const cargarDatos = async () => {
     try {
-      const data = await ApiService.getCatalogos()
-      console.log('Catálogos cargados:', data)
-      setCatalogos(data)
+      const [candidatoData, catalogosData] = await Promise.all([
+        ApiService.getPerfilCompleto(candidatoId),
+        ApiService.getCatalogos()
+      ])
+      
+      const candidatoInfo = candidatoData.candidato
+      setCandidato(candidatoInfo)
+      setCatalogos(catalogosData)
+      
+      setFormData({
+        nacionalidad: candidatoInfo.nacionalidad || '',
+        tipo_documento: candidatoInfo.tipo_documento || '',
+        numero_documento: candidatoInfo.numero_documento || '',
+        primer_apellido: candidatoInfo.primer_apellido || '',
+        primer_nombre: candidatoInfo.primer_nombre || '',
+        email_personal: candidatoInfo.email_personal || '',
+        numero_celular: candidatoInfo.numero_celular || '',
+        cliente: candidatoInfo.cliente || '',
+        oleada: candidatoInfo.oleada || '',
+        ciudad: candidatoInfo.ciudad || '',
+        cargo: candidatoInfo.cargo || '',
+        fuente_reclutamiento: candidatoInfo.fuente_reclutamiento || '',
+        fecha_citacion_entrevista: candidatoInfo.fecha_citacion_entrevista || '',
+        observaciones_llamada: candidatoInfo.observaciones_llamada || '',
+        observaciones_generales: candidatoInfo.observaciones_generales || ''
+      })
     } catch (error) {
-      console.error('Error cargando catálogos:', error)
+      console.error('Error cargando datos:', error)
+      alert('Error al cargar el candidato')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -80,7 +109,7 @@ export default function NuevoCandidato() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validar campos requeridos (cédula y email ahora opcionales)
+    // Validar campos requeridos
     const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
                            'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento']
     
@@ -99,15 +128,42 @@ export default function NuevoCandidato() {
     
     try {
       setSaving(true)
-      const response = await ApiService.crearCandidato(formData)
-      alert(`Candidato creado exitosamente. Token: ${response.candidato.token_acceso}`)
+      await ApiService.editarCandidato(candidatoId, formData)
+      alert('Candidato actualizado exitosamente')
       navigate('/hydra/reclutador/candidatos')
     } catch (error) {
-      console.error('Error creando candidato:', error)
-      alert('Error al crear el candidato. Verifica los datos e intenta nuevamente.')
+      console.error('Error actualizando candidato:', error)
+      alert('Error al actualizar el candidato. Verifica los datos e intenta nuevamente.')
     } finally {
       setSaving(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-gray-600 mt-2">Cargando candidato...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!candidato) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600">Error: No se pudo cargar el candidato</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -118,8 +174,8 @@ export default function NuevoCandidato() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Nuevo Candidato</h1>
-              <p className="text-gray-600">Registrar un nuevo candidato en el sistema de reclutamiento</p>
+              <h1 className="text-3xl font-bold text-gray-900">Editar Candidato</h1>
+              <p className="text-gray-600">Modificar información del candidato: {candidato.primer_nombre} {candidato.primer_apellido}</p>
             </div>
             <button
               onClick={() => navigate('/hydra/reclutador/candidatos')}
@@ -134,10 +190,10 @@ export default function NuevoCandidato() {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
             <div className="flex items-center">
-              <UserPlus className="h-8 w-8 mr-3" />
+              <User className="h-8 w-8 mr-3" />
               <div>
-                <h2 className="text-xl font-semibold">Formulario de Registro</h2>
-                <p className="text-blue-100">Complete todos los campos requeridos</p>
+                <h2 className="text-xl font-semibold">Editar Información</h2>
+                <p className="text-blue-100">Modifica los datos del candidato</p>
               </div>
             </div>
           </div>
@@ -152,7 +208,7 @@ export default function NuevoCandidato() {
                   Datos Principales del Candidato
                 </h3>
                 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Nacionalidad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -309,11 +365,11 @@ export default function NuevoCandidato() {
               {/* Datos del Proceso de Reclutamiento */}
               <div className="bg-purple-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Briefcase className="h-5 w-5 mr-2 text-purple-600" />
+                  <Building className="h-5 w-5 mr-2 text-purple-600" />
                   Datos del Proceso de Reclutamiento
                 </h3>
                 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Cliente */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -344,7 +400,7 @@ export default function NuevoCandidato() {
                     </select>
                   </div>
                   
-                  {/* Oleada - Solo visible si cliente NO es Staff */}
+                  {/* Oleada */}
                   {mostrarOleada() && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -361,7 +417,7 @@ export default function NuevoCandidato() {
                     </div>
                   )}
                   
-                  {/* Ciudad que Aplica */}
+                  {/* Ciudad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                       <MapPin className="h-4 w-4 mr-1" />
@@ -389,8 +445,8 @@ export default function NuevoCandidato() {
                     </select>
                   </div>
                   
-                  {/* Cargo que Aplica */}
-                  <div className="md:col-span-2">
+                  {/* Cargo */}
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Cargo que Aplica *
                     </label>
@@ -404,89 +460,11 @@ export default function NuevoCandidato() {
                       <option value="">
                         {formData.cliente ? 'Selecciona cargo' : 'Primero selecciona un cliente'}
                       </option>
-                      {getCargosDisponibles().length > 0 ? (
-                        getCargosDisponibles().map((cargo) => (
-                          <option key={cargo} value={cargo}>
-                            {cargo}
-                          </option>
-                        ))
-                      ) : formData.cliente ? (
-                        <>
-                          {formData.cliente === 'Staff Operacional' || formData.cliente === 'Staff Administrativo' ? (
-                            <>
-                              <option value="Analista Administrativa Y Contable">Analista Administrativa Y Contable</option>
-                              <option value="Analista De Calidad">Analista De Calidad</option>
-                              <option value="Analista De Calidad Pe">Analista De Calidad Pe</option>
-                              <option value="Analista De Contratacion">Analista De Contratacion</option>
-                              <option value="Analista De Reclutamiento">Analista De Reclutamiento</option>
-                              <option value="Analista De Seleccion">Analista De Seleccion</option>
-                              <option value="Analista De Usuarios">Analista De Usuarios</option>
-                              <option value="Analista PQR">Analista PQR</option>
-                              <option value="Auditor/Gestor Calidad Comercial">Auditor/Gestor Calidad Comercial</option>
-                              <option value="Auxiliar De Gestion Humana">Auxiliar De Gestion Humana</option>
-                              <option value="Auxiliar De Servicios Generales">Auxiliar De Servicios Generales</option>
-                              <option value="Auxiliar Juridico">Auxiliar Juridico</option>
-                              <option value="Auxiliar Mantenimiento">Auxiliar Mantenimiento</option>
-                              <option value="Auxiliar SST">Auxiliar SST</option>
-                              <option value="Ayudante De Obra">Ayudante De Obra</option>
-                              <option value="Backoffice">Backoffice</option>
-                              <option value="Backoffice Pe">Backoffice Pe</option>
-                              <option value="Community Manager">Community Manager</option>
-                              <option value="Contador">Contador</option>
-                              <option value="Coordinador">Coordinador</option>
-                              <option value="Coordinador BackOffice">Coordinador BackOffice</option>
-                              <option value="Coordinador Datamarshall">Coordinador Datamarshall</option>
-                              <option value="Coordinador De Contratacion">Coordinador De Contratacion</option>
-                              <option value="Coordinador De Nomina">Coordinador De Nomina</option>
-                              <option value="Coordinador De Tecnologia">Coordinador De Tecnologia</option>
-                              <option value="Coordinador De Usuarios">Coordinador De Usuarios</option>
-                              <option value="Coordinador Pe">Coordinador Pe</option>
-                              <option value="Coordinador Tecnico">Coordinador Tecnico</option>
-                              <option value="Coordinadora Backoffice">Coordinadora Backoffice</option>
-                              <option value="Coordinadora De Calidad">Coordinadora De Calidad</option>
-                              <option value="Datamarshall">Datamarshall</option>
-                              <option value="Datamarshall Senior Pe">Datamarshall Senior Pe</option>
-                              <option value="Desarrollador Web">Desarrollador Web</option>
-                              <option value="Director de formación">Director de formación</option>
-                              <option value="Director de Operaciones">Director de Operaciones</option>
-                              <option value="Director de Operaciones Pe">Director de Operaciones Pe</option>
-                              <option value="Director De Tecnologia">Director De Tecnologia</option>
-                              <option value="Diseñador Grafico">Diseñador Grafico</option>
-                              <option value="Formador">Formador</option>
-                              <option value="Formador Pe">Formador Pe</option>
-                              <option value="Formador Senior">Formador Senior</option>
-                              <option value="Gestora De Marketing Y Calidad De Se">Gestora De Marketing Y Calidad De Se</option>
-                              <option value="GTR">GTR</option>
-                              <option value="Jefe Backoffice">Jefe Backoffice</option>
-                              <option value="Jefe De Manteniminento">Jefe De Manteniminento</option>
-                              <option value="Jefe de operacion">Jefe de operacion</option>
-                              <option value="Jefe de workforce">Jefe de workforce</option>
-                              <option value="Jefe Financiero">Jefe Financiero</option>
-                              <option value="Jefe Juridica">Jefe Juridica</option>
-                              <option value="Legalizador">Legalizador</option>
-                              <option value="Maestro De Obra">Maestro De Obra</option>
-                              <option value="Profesional De SST">Profesional De SST</option>
-                              <option value="Psicologo De Seleccion">Psicologo De Seleccion</option>
-                              <option value="Recepcionista">Recepcionista</option>
-                              <option value="Subgerente De Operaciones">Subgerente De Operaciones</option>
-                              <option value="Tecnico De Soporte">Tecnico De Soporte</option>
-                              <option value="Staff">Staff</option>
-                            </>
-                          ) : formData.cliente === 'Claro' ? (
-                            <>
-                              <option value="Agente Call Center">Agente Call Center</option>
-                              <option value="Agente Call Center Plus">Agente Call Center Plus</option>
-                            </>
-                          ) : formData.cliente === 'Obamacare' ? (
-                            <>
-                              <option value="Customer Service">Customer Service</option>
-                              <option value="Agente Call Center">Agente Call Center</option>
-                            </>
-                          ) : formData.cliente === 'Majority' ? (
-                            <option value="Agente Call Center">Agente Call Center</option>
-                          ) : null}
-                        </>
-                      ) : null}
+                      {getCargosDisponibles().length > 0 && getCargosDisponibles().map((cargo) => (
+                        <option key={cargo} value={cargo}>
+                          {cargo}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   
@@ -530,7 +508,7 @@ export default function NuevoCandidato() {
                       Fecha de Citación a Entrevista
                     </label>
                     <input
-                      type="datetime-local"
+                      type="date"
                       value={formData.fecha_citacion_entrevista}
                       onChange={(e) => setFormData({...formData, fecha_citacion_entrevista: e.target.value})}
                       className="input-field"
@@ -546,7 +524,7 @@ export default function NuevoCandidato() {
                   Observaciones
                 </h3>
                 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Observaciones de Llamada */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -595,19 +573,6 @@ export default function NuevoCandidato() {
                 </div>
               </div>
 
-              {/* Información importante */}
-              <div className="bg-yellow-50 rounded-lg p-6">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">📝 Información Importante</h4>
-                <ul className="text-xs text-gray-700 space-y-1">
-                  <li>• Los campos marcados con (*) son obligatorios</li>
-                  <li>• Si el candidato es colombiano, el tipo de documento se asigna automáticamente como "CC"</li>
-                  <li>• El campo "Oleada" solo aparece para clientes que no son Staff</li>
-                  <li>• Los cargos disponibles cambian según el cliente seleccionado</li>
-                  <li>• El candidato recibirá un email con los formularios a completar</li>
-                  <li>• El token de acceso tiene una validez de 30 días</li>
-                </ul>
-              </div>
-
               {/* Botones */}
               <div className="flex justify-end space-x-4 pt-6 border-t">
                 <button
@@ -626,12 +591,12 @@ export default function NuevoCandidato() {
                   {saving ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creando...
+                      Guardando...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Crear Candidato
+                      Guardar Cambios
                     </>
                   )}
                 </button>

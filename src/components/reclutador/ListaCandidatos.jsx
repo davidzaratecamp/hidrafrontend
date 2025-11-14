@@ -312,7 +312,10 @@ export default function ListaCandidatos() {
                             Ver Perfil
                           </button>
                           {getAccionButton(candidato)}
-                          <button className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors">
+                          <button 
+                            onClick={() => navigate(`/hydra/reclutador/editar-candidato/${candidato.id}`)}
+                            className="flex items-center px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition-colors"
+                          >
                             <Edit className="h-4 w-4 mr-1" />
                             Editar
                           </button>

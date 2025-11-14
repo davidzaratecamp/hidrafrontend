@@ -100,16 +100,16 @@ export default function Personal() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">Información Personal</h1>
-                <p className="text-emerald-100">Paso 5 de 6 - Perfil personal y competencias</p>
+          <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-4 sm:p-8">
+            <div className="flex items-center justify-between flex-col sm:flex-row text-center sm:text-left">
+              <div className="mb-4 sm:mb-0">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Información Personal</h1>
+                <p className="text-emerald-100 text-sm sm:text-base">Paso 5 de 6 - Perfil personal y competencias</p>
               </div>
-              <User className="h-12 w-12 text-emerald-200" />
+              <User className="h-8 w-8 sm:h-12 sm:w-12 text-emerald-200" />
             </div>
             
             <div className="mt-6 bg-emerald-700 bg-opacity-50 rounded-lg p-4">
@@ -126,11 +126,11 @@ export default function Personal() {
             </div>
           </div>
 
-          <div className="p-8">
-            <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="p-4 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               
-              <div className="bg-green-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="bg-green-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Star className="h-5 w-5 mr-2 text-green-600" />
                   Características Personales
                 </h2>
@@ -181,12 +181,12 @@ export default function Personal() {
               </div>
 
 
-              <div className="bg-orange-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <div className="bg-orange-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   Conocimientos Informáticos (1-5)
                 </h2>
                 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Excel *

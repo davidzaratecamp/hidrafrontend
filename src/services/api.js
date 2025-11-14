@@ -109,6 +109,14 @@ class ApiService {
     return this.post('/candidato/crear', data);
   }
 
+  async editarCandidato(candidatoId, data) {
+    return this.put(`/candidato/editar/${candidatoId}`, data);
+  }
+
+  async actualizarFechaEntrevista(candidatoId, fecha) {
+    return this.put(`/candidato/fecha-entrevista/${candidatoId}`, { fecha_citacion_entrevista: fecha });
+  }
+
   async getCatalogos() {
     return this.get('/candidato/catalogos');
   }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase, 
-  GraduationCap, Heart, Shield, Star, Award, FileText, Download 
+  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
@@ -13,6 +13,9 @@ export default function PerfilCandidato() {
   const navigate = useNavigate()
   const [candidato, setCandidato] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [fechaEntrevista, setFechaEntrevista] = useState('')
+  const [editandoFecha, setEditandoFecha] = useState(false)
+  const [guardandoFecha, setGuardandoFecha] = useState(false)
 
   useEffect(() => {
     cargarPerfil()
@@ -22,6 +25,7 @@ export default function PerfilCandidato() {
     try {
       const response = await ApiService.getPerfilCompleto(candidatoId)
       setCandidato(response.candidato)
+      setFechaEntrevista(response.candidato.fecha_citacion_entrevista || '')
     } catch (error) {
       console.error('Error cargando perfil:', error)
       alert('Error al cargar el perfil del candidato')
@@ -68,7 +72,67 @@ export default function PerfilCandidato() {
       doc.text(`Nacionalidad: ${candidato.nacionalidad}`, margin, yPosition)
       yPosition += lineHeight
     }
+    if (candidato.fecha_nacimiento) {
+      doc.text(`Fecha de nacimiento: ${new Date(candidato.fecha_nacimiento).toLocaleDateString()}`, margin, yPosition)
+      yPosition += lineHeight
+    }
+    if (candidato.estado_civil) {
+      doc.text(`Estado civil: ${candidato.estado_civil}`, margin, yPosition)
+      yPosition += lineHeight
+    }
+    if (candidato.genero) {
+      doc.text(`Género: ${candidato.genero}`, margin, yPosition)
+      yPosition += lineHeight
+    }
     yPosition += sectionSpacing
+    
+    // Información médica
+    if (candidato.grupo_sanguineo || candidato.eps || candidato.afp) {
+      doc.setFontSize(16)
+      doc.setFont(undefined, 'bold')
+      doc.text('INFORMACIÓN MÉDICA', margin, yPosition)
+      yPosition += lineHeight + 3
+      
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'normal')
+      if (candidato.grupo_sanguineo) {
+        doc.text(`Grupo sanguíneo: ${candidato.grupo_sanguineo}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.eps) {
+        doc.text(`EPS: ${candidato.eps}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.afp) {
+        doc.text(`AFP: ${candidato.afp}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      yPosition += sectionSpacing
+    }
+    
+    // Contacto de emergencia
+    if (candidato.nombre_emergencia || candidato.numero_emergencia) {
+      doc.setFontSize(16)
+      doc.setFont(undefined, 'bold')
+      doc.text('CONTACTO DE EMERGENCIA', margin, yPosition)
+      yPosition += lineHeight + 3
+      
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'normal')
+      if (candidato.nombre_emergencia) {
+        doc.text(`Nombre: ${candidato.nombre_emergencia}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.numero_emergencia) {
+        doc.text(`Teléfono: ${candidato.numero_emergencia}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.parentesco_emergencia) {
+        doc.text(`Parentesco: ${candidato.parentesco_emergencia}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      yPosition += sectionSpacing
+    }
     
     // Información del cargo
     doc.setFontSize(16)
@@ -142,15 +206,96 @@ export default function PerfilCandidato() {
         doc.text(`Salario: $${Number(candidato.salario_experiencia).toLocaleString()}`, margin, yPosition)
         yPosition += lineHeight
       }
+      if (candidato.fecha_inicio_experiencia) {
+        doc.text(`Fecha inicio: ${new Date(candidato.fecha_inicio_experiencia).toLocaleDateString()}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.fecha_retiro_experiencia) {
+        doc.text(`Fecha retiro: ${new Date(candidato.fecha_retiro_experiencia).toLocaleDateString()}`, margin, yPosition)
+        yPosition += lineHeight
+      }
       if (candidato.tiempo_laborado_anos || candidato.tiempo_laborado_meses) {
         doc.text(`Tiempo laborado: ${candidato.tiempo_laborado_anos || 0} años, ${candidato.tiempo_laborado_meses || 0} meses`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.motivo_retiro) {
+        doc.text(`Motivo de retiro: ${candidato.motivo_retiro}`, margin, yPosition, { maxWidth: 170 })
+        yPosition += lineHeight * 2 // Doble espacio para texto largo
+      }
+      if (candidato.experiencia_comercial_certificada) {
+        doc.text(`Experiencia comercial certificada: ${candidato.experiencia_comercial_certificada}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.experiencia_comercial_no_certificada) {
+        doc.text(`Experiencia comercial no certificada: ${candidato.experiencia_comercial_no_certificada}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.primer_empleo_formal) {
+        doc.text(`Primer empleo formal: ${candidato.primer_empleo_formal}`, margin, yPosition)
+        yPosition += lineHeight
+      }
+      if (candidato.ha_trabajado_asiste) {
+        doc.text(`Ha trabajado en Asiste Ing: ${candidato.ha_trabajado_asiste}`, margin, yPosition)
         yPosition += lineHeight
       }
       yPosition += sectionSpacing
     }
     
+    // Perfil Personal y Aptitudes
+    if (candidato.fortalezas || candidato.aspectos_mejorar || candidato.competencias_laborales) {
+      if (yPosition > 220) { // Nueva página si no hay espacio
+        doc.addPage()
+        yPosition = margin
+      }
+      
+      doc.setFontSize(16)
+      doc.setFont(undefined, 'bold')
+      doc.text('PERFIL PERSONAL Y APTITUDES', margin, yPosition)
+      yPosition += lineHeight + 3
+      
+      doc.setFontSize(12)
+      doc.setFont(undefined, 'normal')
+      
+      if (candidato.fortalezas) {
+        doc.setFont(undefined, 'bold')
+        doc.text('Fortalezas:', margin, yPosition)
+        yPosition += lineHeight
+        doc.setFont(undefined, 'normal')
+        const fortalezasLines = doc.splitTextToSize(candidato.fortalezas, 170)
+        doc.text(fortalezasLines, margin, yPosition)
+        yPosition += (fortalezasLines.length * lineHeight) + 3
+      }
+      
+      if (candidato.aspectos_mejorar) {
+        doc.setFont(undefined, 'bold')
+        doc.text('Aspectos a Mejorar:', margin, yPosition)
+        yPosition += lineHeight
+        doc.setFont(undefined, 'normal')
+        const aspectosLines = doc.splitTextToSize(candidato.aspectos_mejorar, 170)
+        doc.text(aspectosLines, margin, yPosition)
+        yPosition += (aspectosLines.length * lineHeight) + 3
+      }
+      
+      if (candidato.competencias_laborales) {
+        doc.setFont(undefined, 'bold')
+        doc.text('Competencias Laborales:', margin, yPosition)
+        yPosition += lineHeight
+        doc.setFont(undefined, 'normal')
+        const competenciasLines = doc.splitTextToSize(candidato.competencias_laborales, 170)
+        doc.text(competenciasLines, margin, yPosition)
+        yPosition += (competenciasLines.length * lineHeight) + 3
+      }
+      
+      yPosition += sectionSpacing
+    }
+    
     // Conocimientos informáticos
     if (candidato.conocimiento_excel || candidato.conocimiento_powerpoint || candidato.conocimiento_word) {
+      if (yPosition > 250) { // Nueva página si no hay espacio
+        doc.addPage()
+        yPosition = margin
+      }
+      
       doc.setFontSize(16)
       doc.setFont(undefined, 'bold')
       doc.text('CONOCIMIENTOS INFORMÁTICOS', margin, yPosition)
@@ -170,11 +315,41 @@ export default function PerfilCandidato() {
         doc.text(`Word: ${candidato.conocimiento_word}/5`, margin, yPosition)
         yPosition += lineHeight
       }
+      if (candidato.autoevaluacion) {
+        doc.text(`Autoevaluación General: ${candidato.autoevaluacion}/5`, margin, yPosition)
+        yPosition += lineHeight
+      }
     }
     
     // Guardar el PDF
     const fileName = `perfil_${candidato.primer_nombre}_${candidato.primer_apellido}.pdf`
     doc.save(fileName)
+  }
+
+  const actualizarFechaEntrevista = async () => {
+    try {
+      setGuardandoFecha(true)
+      await ApiService.actualizarFechaEntrevista(candidatoId, fechaEntrevista)
+      
+      // Actualizar el estado local del candidato
+      setCandidato(prev => ({
+        ...prev,
+        fecha_citacion_entrevista: fechaEntrevista
+      }))
+      
+      setEditandoFecha(false)
+      alert('Fecha de entrevista actualizada exitosamente')
+    } catch (error) {
+      console.error('Error actualizando fecha:', error)
+      alert('Error al actualizar la fecha de entrevista')
+    } finally {
+      setGuardandoFecha(false)
+    }
+  }
+
+  const cancelarEdicionFecha = () => {
+    setFechaEntrevista(candidato.fecha_citacion_entrevista || '')
+    setEditandoFecha(false)
   }
 
   if (loading) {
@@ -453,6 +628,88 @@ export default function PerfilCandidato() {
                   </div>
                 </div>
               )}
+
+              {/* Gestión de Entrevista */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-purple-600" />
+                  Gestión de Entrevista
+                </h3>
+                
+                <div className="space-y-4">
+                  {editandoFecha ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Fecha y Hora de Entrevista
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={fechaEntrevista}
+                          onChange={(e) => setFechaEntrevista(e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={actualizarFechaEntrevista}
+                          disabled={guardandoFecha}
+                          className="flex items-center px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {guardandoFecha ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                              Guardando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-3 w-3 mr-1" />
+                              Guardar
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={cancelarEdicionFecha}
+                          disabled={guardandoFecha}
+                          className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400 disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">
+                        {candidato.fecha_citacion_entrevista ? (
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                            <span className="font-medium text-gray-900">
+                              {new Date(candidato.fecha_citacion_entrevista).toLocaleString('es-ES', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-gray-500">
+                            No hay fecha de entrevista programada
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setEditandoFecha(true)}
+                        className="flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition-colors"
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {candidato.fecha_citacion_entrevista ? 'Editar' : 'Programar'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Estado de Formularios */}
               <div className="bg-white rounded-lg shadow p-6">

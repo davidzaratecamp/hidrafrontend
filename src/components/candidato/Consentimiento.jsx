@@ -100,16 +100,16 @@ export default function Consentimiento() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">Consentimiento y Autorización</h1>
-                <p className="text-red-100">Paso 6 de 6 - Autorización final</p>
+          <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 sm:p-8">
+            <div className="flex items-center justify-between flex-col sm:flex-row text-center sm:text-left">
+              <div className="mb-4 sm:mb-0">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Consentimiento y Autorización</h1>
+                <p className="text-red-100 text-sm sm:text-base">Paso 6 de 6 - Autorización final</p>
               </div>
-              <Shield className="h-12 w-12 text-red-200" />
+              <Shield className="h-8 w-8 sm:h-12 sm:w-12 text-red-200" />
             </div>
             
             <div className="mt-6 bg-red-700 bg-opacity-50 rounded-lg p-4">
@@ -126,9 +126,9 @@ export default function Consentimiento() {
             </div>
           </div>
 
-          <div className="p-8">
-            <div className="bg-blue-50 rounded-lg p-6 mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          <div className="p-4 sm:p-8">
+            <div className="bg-blue-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                 Autorización para el Tratamiento de Datos Personales
               </h2>
               
@@ -177,14 +177,14 @@ export default function Consentimiento() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-gray-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Calendar className="h-5 w-5 mr-2 text-gray-600" />
                   Datos de Consentimiento
                 </h2>
                 
-                <div className="grid md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Ciudad *
@@ -255,8 +255,8 @@ export default function Consentimiento() {
                 </div>
               </div>
 
-              <div className="bg-green-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">🎉 ¡Último Paso!</h3>
+              <div className="bg-green-50 rounded-lg p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">🎉 ¡Último Paso!</h3>
                 <p className="text-gray-700 mb-4">
                   Estás a punto de completar tu proceso de aplicación. Al enviar este formulario:
                 </p>

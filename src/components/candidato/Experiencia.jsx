@@ -62,6 +62,25 @@ export default function Experiencia() {
     }
   }
 
+  const formatSalary = (value) => {
+    // Remover caracteres no numéricos
+    const numericValue = value.toString().replace(/[^\d]/g, '')
+    
+    // Formatear con puntos como separadores de miles
+    if (numericValue) {
+      return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    }
+    return ''
+  }
+
+  const handleSalaryChange = (e) => {
+    const rawValue = e.target.value.replace(/[^\d]/g, '') // Solo números
+    setFormData({
+      ...formData,
+      salario_experiencia: rawValue // Guardar valor numérico puro
+    })
+  }
+
   const calcularTiempoLaborado = (fechaInicio, fechaRetiro) => {
     if (!fechaInicio || !fechaRetiro) return { anos: 0, meses: 0 }
     
@@ -143,16 +162,16 @@ export default function Experiencia() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">Experiencia Laboral</h1>
-                <p className="text-indigo-100">Paso 4 de 6 - Tu experiencia más reciente</p>
+          <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white p-4 sm:p-8">
+            <div className="flex items-center justify-between flex-col sm:flex-row text-center sm:text-left">
+              <div className="mb-4 sm:mb-0">
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Experiencia Laboral</h1>
+                <p className="text-indigo-100 text-sm sm:text-base">Paso 4 de 6 - Tu experiencia más reciente</p>
               </div>
-              <Briefcase className="h-12 w-12 text-indigo-200" />
+              <Briefcase className="h-8 w-8 sm:h-12 sm:w-12 text-indigo-200" />
             </div>
             
             <div className="mt-6 bg-indigo-700 bg-opacity-50 rounded-lg p-4">
@@ -169,16 +188,16 @@ export default function Experiencia() {
             </div>
           </div>
 
-          <div className="p-8">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="bg-indigo-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <div className="p-4 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+              <div className="bg-indigo-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Briefcase className="h-5 w-5 mr-2 text-indigo-600" />
                   Información de la Empresa
                 </h2>
                 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Nombre de la Empresa *
                     </label>
@@ -212,24 +231,24 @@ export default function Experiencia() {
                       Salario *
                     </label>
                     <input
-                      type="number"
-                      value={formData.salario_experiencia}
-                      onChange={(e) => setFormData({...formData, salario_experiencia: e.target.value})}
+                      type="text"
+                      value={formatSalary(formData.salario_experiencia)}
+                      onChange={handleSalaryChange}
                       required
                       className="input-field"
-                      placeholder="Salario mensual en pesos"
+                      placeholder="Ejemplo: 2.000.000"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="bg-blue-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Calendar className="h-5 w-5 mr-2 text-blue-600" />
                   Fechas y Tiempo
                 </h2>
                 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Fecha de Inicio *
@@ -256,7 +275,7 @@ export default function Experiencia() {
                     />
                   </div>
                   
-                  <div className="md:col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tiempo Laborado
                     </label>
@@ -272,7 +291,7 @@ export default function Experiencia() {
                     />
                   </div>
                   
-                  <div className="md:col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Motivo de Retiro *
                     </label>
@@ -288,12 +307,12 @@ export default function Experiencia() {
                 </div>
               </div>
 
-              <div className="bg-orange-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <div className="bg-orange-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   Experiencia Comercial
                 </h2>
                 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       ¿Experiencia comercial certificada? *
@@ -346,7 +365,7 @@ export default function Experiencia() {
                     </select>
                   </div>
                   
-                  <div className="md:col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       ¿Es tu primer empleo formal? *
                     </label>
@@ -374,8 +393,8 @@ export default function Experiencia() {
                 </div>
               </div>
 
-              <div className="bg-green-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <div className="bg-green-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   Información Adicional
                 </h2>
                 
@@ -406,8 +425,8 @@ export default function Experiencia() {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 Información Importante</h3>
+              <div className="bg-yellow-50 rounded-lg p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">📝 Información Importante</h3>
                 <ul className="text-sm text-gray-700 space-y-2">
                   <li>• Registra tu <strong>experiencia laboral más reciente</strong> o significativa</li>
                   <li>• Si no has tenido experiencia laboral formal, puedes incluir prácticas profesionales</li>
