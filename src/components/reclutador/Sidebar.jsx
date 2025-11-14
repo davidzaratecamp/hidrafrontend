@@ -62,6 +62,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                end
                 className={({ isActive }) =>
                   `sidebar-item rounded-lg ${isActive ? 'active' : ''}`
                 }

@@ -9,7 +9,9 @@ import {
   Building,
   MapPin,
   Calendar,
-  Phone
+  Phone,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import Sidebar from './Sidebar'
 import ApiService from '../../services/api'
@@ -21,16 +23,21 @@ export default function ListaCandidatos() {
   const [estadoActivo, setEstadoActivo] = useState('nuevo')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [mostrarContactosFallidos, setMostrarContactosFallidos] = useState(false)
 
   const estadosConfig = {
-    nuevo: { label: 'Nuevos', color: 'bg-gray-100 text-gray-800', count: 0 },
-    formularios_enviados: { label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800', count: 0 },
-    formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800', count: 0 },
-    citado: { label: 'Citados', color: 'bg-yellow-100 text-yellow-800', count: 0 },
-    entrevistado: { label: 'Entrevistados', color: 'bg-purple-100 text-purple-800', count: 0 },
-    aprobado: { label: 'Aprobados', color: 'bg-emerald-100 text-emerald-800', count: 0 },
-    rechazado: { label: 'Rechazados', color: 'bg-red-100 text-red-800', count: 0 },
-    contratado: { label: 'Contratados', color: 'bg-indigo-100 text-indigo-800', count: 0 }
+    nuevo: { label: 'Nuevos', color: 'bg-gray-100 text-gray-800' },
+    contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
+    formularios_enviados: { label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800' },
+    formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800' }
+  }
+
+  const estadosContactoFallido = {
+    contacto_fallido: { label: 'Contacto Fallido', color: 'bg-red-100 text-red-800' },
+    no_contesta: { label: 'No Contesta', color: 'bg-orange-100 text-orange-800' },
+    reagendar: { label: 'Reagendar', color: 'bg-yellow-100 text-yellow-800' },
+    no_interesado: { label: 'No Interesado', color: 'bg-red-100 text-red-800' },
+    numero_incorrecto: { label: 'Número Incorrecto', color: 'bg-red-100 text-red-800' }
   }
 
   useEffect(() => {
@@ -135,6 +142,7 @@ export default function ListaCandidatos() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
+            {/* Estados principales */}
             {Object.entries(estadosConfig).map(([estado, config]) => (
               <button
                 key={estado}
@@ -148,6 +156,44 @@ export default function ListaCandidatos() {
                 {config.label} ({resumenEstados[estado] || 0})
               </button>
             ))}
+            
+            {/* Botón para contactos fallidos con dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setMostrarContactosFallidos(!mostrarContactosFallidos)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center ${
+                  Object.keys(estadosContactoFallido).includes(estadoActivo)
+                    ? 'bg-red-100 text-red-800 shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Contactos Fallidos ({Object.keys(estadosContactoFallido).reduce((total, estado) => total + (resumenEstados[estado] || 0), 0)})
+                {mostrarContactosFallidos ? 
+                  <ChevronUp className="h-4 w-4 ml-1" /> : 
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                }
+              </button>
+              
+              {/* Dropdown con los estados de contacto fallido */}
+              {mostrarContactosFallidos && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-full">
+                  {Object.entries(estadosContactoFallido).map(([estado, config]) => (
+                    <button
+                      key={estado}
+                      onClick={() => {
+                        setEstadoActivo(estado)
+                        setMostrarContactosFallidos(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                        estadoActivo === estado ? config.color : 'text-gray-700'
+                      }`}
+                    >
+                      {config.label} ({resumenEstados[estado] || 0})
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="relative mb-6">
