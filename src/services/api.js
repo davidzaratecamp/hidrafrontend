@@ -1,4 +1,8 @@
-const API_BASE_URL = 'http://200.91.204.54/api';
+const getApiBaseUrl = () => {
+  return import.meta.env.DEV ? 'http://localhost:3000/api' : 'http://200.91.204.54/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   
@@ -111,6 +115,10 @@ class ApiService {
 
   async editarCandidato(candidatoId, data) {
     return this.put(`/candidato/editar/${candidatoId}`, data);
+  }
+
+  async cambiarEstadoCandidato(candidatoId, estado) {
+    return this.put(`/candidato/cambiar-estado/${candidatoId}`, { estado });
   }
 
   async actualizarFechaEntrevista(candidatoId, fecha) {

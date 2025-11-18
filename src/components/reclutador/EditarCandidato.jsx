@@ -28,6 +28,7 @@ export default function EditarCandidato() {
     cargo: '',
     fuente_reclutamiento: '',
     fecha_citacion_entrevista: '',
+    hora_citacion_entrevista: '',
     observaciones_llamada: '',
     observaciones_generales: ''
   })
@@ -45,11 +46,23 @@ export default function EditarCandidato() {
       
       const candidatoInfo = candidatoData.candidato
       setCandidato(candidatoInfo)
-      console.log('Catálogos en EditarCandidato:', catalogosData)
-      console.log('Observaciones de llamada en EditarCandidato:', catalogosData.observaciones_llamada)
       setCatalogos(catalogosData)
       
-      setFormData({
+      // Formatear la fecha y hora para los inputs
+      const formatearFechaHora = (fechaHora) => {
+        if (!fechaHora) return { fecha: '', hora: '' };
+        const fechaObj = new Date(fechaHora);
+        if (isNaN(fechaObj.getTime())) return { fecha: '', hora: '' };
+        
+        const fecha = fechaObj.toISOString().split('T')[0];
+        const hora = fechaObj.toTimeString().slice(0, 5); // HH:MM formato
+        
+        return { fecha, hora };
+      };
+
+      const { fecha: fechaCita, hora: horaCita } = formatearFechaHora(candidatoInfo.fecha_citacion_entrevista);
+
+      const formDataResult = {
         nacionalidad: candidatoInfo.nacionalidad || '',
         tipo_documento: candidatoInfo.tipo_documento || '',
         numero_documento: candidatoInfo.numero_documento || '',
@@ -62,10 +75,13 @@ export default function EditarCandidato() {
         ciudad: candidatoInfo.ciudad || '',
         cargo: candidatoInfo.cargo || '',
         fuente_reclutamiento: candidatoInfo.fuente_reclutamiento || '',
-        fecha_citacion_entrevista: candidatoInfo.fecha_citacion_entrevista || '',
+        fecha_citacion_entrevista: fechaCita,
+        hora_citacion_entrevista: horaCita,
         observaciones_llamada: candidatoInfo.observaciones_llamada || '',
         observaciones_generales: candidatoInfo.observaciones_generales || ''
-      })
+      };
+      
+      setFormData(formDataResult)
     } catch (error) {
       console.error('Error cargando datos:', error)
       alert('Error al cargar el candidato')
@@ -93,19 +109,31 @@ export default function EditarCandidato() {
   const getCargosDisponibles = () => {
     if (!formData.cliente || !catalogos) return []
     
+    let cargos = []
     switch (formData.cliente) {
       case 'Staff Operacional':
       case 'Staff Administrativo':
-        return catalogos.cargos_staff || []
+        cargos = catalogos.cargos_staff || []
+        break
       case 'Claro':
-        return catalogos.cargos_claro || []
+        cargos = catalogos.cargos_claro || []
+        break
       case 'Obamacare':
-        return catalogos.cargos_obamacare || []
+        cargos = catalogos.cargos_obamacare || []
+        break
       case 'Majority':
-        return catalogos.cargos_majority || []
+        cargos = catalogos.cargos_majority || []
+        break
       default:
-        return []
+        cargos = []
     }
+    
+    // Incluir el cargo actual del candidato si no está en la lista
+    if (candidato?.cargo && !cargos.includes(candidato.cargo)) {
+      cargos = [candidato.cargo, ...cargos]
+    }
+    
+    return cargos
   }
 
   const handleSubmit = async (e) => {
@@ -130,7 +158,21 @@ export default function EditarCandidato() {
     
     try {
       setSaving(true)
-      await ApiService.editarCandidato(candidatoId, formData)
+      
+      // Combinar fecha y hora para enviar al backend
+      const dataToSend = { ...formData };
+      if (formData.fecha_citacion_entrevista && formData.hora_citacion_entrevista) {
+        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T${formData.hora_citacion_entrevista}:00`;
+      } else if (formData.fecha_citacion_entrevista) {
+        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T00:00:00`;
+      } else {
+        dataToSend.fecha_citacion_entrevista = null;
+      }
+      
+      // Remover el campo de hora separado antes de enviar
+      delete dataToSend.hora_citacion_entrevista;
+      
+      await ApiService.editarCandidato(candidatoId, dataToSend)
       alert('Candidato actualizado exitosamente')
       navigate('/hydra/reclutador/candidatos')
     } catch (error) {
@@ -169,27 +211,30 @@ export default function EditarCandidato() {
   }
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       
-      <div className="ml-64 flex-1 p-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Editar Candidato</h1>
-              <p className="text-gray-600">Modificar información del candidato: {candidato.primer_nombre} {candidato.primer_apellido}</p>
-            </div>
-            <button
-              onClick={() => navigate('/hydra/reclutador/candidatos')}
-              className="btn-secondary flex items-center"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a Candidatos
+      <div className="flex-1 lg:ml-64">
+        <div className="p-4 lg:p-8 pt-20 lg:pt-8 max-w-4xl mx-auto">
+          <div className="mb-6 lg:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Editar Candidato</h1>
+                <p className="text-sm lg:text-base text-gray-600 break-words">
+                  Modificar información del candidato: {candidato.primer_nombre} {candidato.primer_apellido}
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/hydra/reclutador/candidatos')}
+                className="btn-secondary flex items-center"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver a Candidatos
             </button>
+            </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
             <div className="flex items-center">
               <User className="h-8 w-8 mr-3" />
@@ -379,11 +424,19 @@ export default function EditarCandidato() {
                     </label>
                     <select
                       value={formData.cliente}
-                      onChange={(e) => setFormData({...formData, cliente: e.target.value, cargo: ''})}
+                      onChange={(e) => {
+                        const nuevoCliente = e.target.value;
+                        const mantenerCargo = nuevoCliente === candidato?.cliente ? candidato?.cargo : '';
+                        setFormData({...formData, cliente: nuevoCliente, cargo: mantenerCargo});
+                      }}
                       required
                       className="input-field"
                     >
                       <option value="">Selecciona cliente</option>
+                      {/* Incluir el valor actual si no está en el catálogo */}
+                      {candidato?.cliente && !catalogos.clientes?.find(c => c.value === candidato.cliente) && (
+                        <option value={candidato.cliente}>{candidato.cliente}</option>
+                      )}
                       {catalogos.clientes?.length > 0 ? (
                         catalogos.clientes.map((cliente) => (
                           <option key={cliente.value} value={cliente.value}>
@@ -482,6 +535,10 @@ export default function EditarCandidato() {
                       className="input-field"
                     >
                       <option value="">Selecciona fuente</option>
+                      {/* Incluir el valor actual si no está en el catálogo */}
+                      {candidato?.fuente_reclutamiento && !catalogos.fuentes_reclutamiento?.find(f => f.value === candidato.fuente_reclutamiento) && (
+                        <option value={candidato.fuente_reclutamiento}>{candidato.fuente_reclutamiento}</option>
+                      )}
                       {catalogos.fuentes_reclutamiento?.length > 0 ? (
                         catalogos.fuentes_reclutamiento.map((fuente) => (
                           <option key={fuente.value} value={fuente.value}>
@@ -513,6 +570,19 @@ export default function EditarCandidato() {
                       type="date"
                       value={formData.fecha_citacion_entrevista}
                       onChange={(e) => setFormData({...formData, fecha_citacion_entrevista: e.target.value})}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  {/* Hora de Citación a Entrevista */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Hora de Citación a Entrevista
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.hora_citacion_entrevista}
+                      onChange={(e) => setFormData({...formData, hora_citacion_entrevista: e.target.value})}
                       className="input-field"
                     />
                   </div>
@@ -611,5 +681,6 @@ export default function EditarCandidato() {
         </div>
       </div>
     </div>
+  </div>
   )
 }

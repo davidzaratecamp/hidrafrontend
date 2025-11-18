@@ -105,6 +105,7 @@ export default function Dashboard() {
     { estado: 'formularios_enviados', label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800', count: resumenEstados.formularios_enviados || 0 },
     { estado: 'formularios_completados', label: 'Formularios Completados', color: 'bg-green-100 text-green-800', count: resumenEstados.formularios_completados || 0 },
     { estado: 'citado', label: 'Citados', color: 'bg-purple-100 text-purple-800', count: resumenEstados.citado || 0 },
+    { estado: 'no_asistio', label: 'No Asistieron', color: 'bg-orange-100 text-orange-800', count: resumenEstados.no_asistio || 0 },
     { estado: 'entrevistado', label: 'Entrevistados', color: 'bg-indigo-100 text-indigo-800', count: resumenEstados.entrevistado || 0 },
     { estado: 'aprobado', label: 'Aprobados', color: 'bg-emerald-100 text-emerald-800', count: resumenEstados.aprobado || 0 },
     { estado: 'rechazado', label: 'Rechazados', color: 'bg-red-100 text-red-800', count: resumenEstados.rechazado || 0 },

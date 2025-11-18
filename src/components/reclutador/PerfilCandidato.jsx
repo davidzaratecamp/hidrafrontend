@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase, 
-  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save
+  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
@@ -352,6 +352,55 @@ export default function PerfilCandidato() {
     setEditandoFecha(false)
   }
 
+  const cambiarEstado = async (nuevoEstado, mensaje) => {
+    if (!confirm(mensaje)) {
+      return;
+    }
+    
+    try {
+      console.log('Cambiando estado a:', nuevoEstado);
+      await ApiService.cambiarEstadoCandidato(candidatoId, nuevoEstado);
+      
+      // Actualizar el estado local
+      setCandidato(prev => ({
+        ...prev,
+        estado: nuevoEstado
+      }));
+      
+      alert(`Candidato marcado como "${getEstadoLabel(nuevoEstado)}" exitosamente`);
+    } catch (error) {
+      console.error('Error actualizando estado:', error);
+      alert('Error al actualizar el estado');
+    }
+  }
+
+  const marcarNoAsistio = () => {
+    cambiarEstado('no_asistio', '¿Está seguro de marcar este candidato como "No asistió"?');
+  }
+
+  const marcarCitado = () => {
+    cambiarEstado('citado', '¿Está seguro de marcar este candidato como "Citado"?');
+  }
+
+  const marcarEntrevistado = () => {
+    cambiarEstado('entrevistado', '¿Está seguro de marcar este candidato como "Entrevistado"?');
+  }
+
+  const getEstadoLabel = (estado) => {
+    const labels = {
+      'nuevo': 'Nuevo',
+      'formularios_enviados': 'Formularios Enviados',
+      'formularios_completados': 'Formularios Completados',
+      'citado': 'Citado',
+      'no_asistio': 'No Asistió',
+      'entrevistado': 'Entrevistado',
+      'aprobado': 'Aprobado',
+      'rechazado': 'Rechazado',
+      'contratado': 'Contratado'
+    };
+    return labels[estado] || estado;
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -394,8 +443,8 @@ export default function PerfilCandidato() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       
-      <div className="flex-1 p-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="flex-1 lg:ml-64">
+        <div className="p-4 lg:p-6 pt-20 lg:pt-6 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <button
@@ -699,15 +748,137 @@ export default function PerfilCandidato() {
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => setEditandoFecha(true)}
-                        className="flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition-colors"
-                      >
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {candidato.fecha_citacion_entrevista ? 'Editar' : 'Programar'}
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setEditandoFecha(true)}
+                          className="flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition-colors"
+                        >
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {candidato.fecha_citacion_entrevista ? 'Editar' : 'Programar'}
+                        </button>
+                        
+                        {/* Botón No asistió - solo visible si está citado */}
+                        {candidato.estado === 'citado' && (
+                          <button
+                            onClick={marcarNoAsistio}
+                            className="flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded text-sm hover:bg-orange-200 transition-colors"
+                          >
+                            <Clock className="h-3 w-3 mr-1" />
+                            No asistió
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Gestión del Proceso */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-blue-600" />
+                  Gestión del Proceso
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Estado actual */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Estado actual:</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      candidato.estado === 'formularios_completados' ? 'bg-green-100 text-green-800' :
+                      candidato.estado === 'citado' ? 'bg-purple-100 text-purple-800' :
+                      candidato.estado === 'entrevistado' ? 'bg-indigo-100 text-indigo-800' :
+                      candidato.estado === 'no_asistio' ? 'bg-orange-100 text-orange-800' :
+                      candidato.estado === 'aprobado' ? 'bg-emerald-100 text-emerald-800' :
+                      candidato.estado === 'rechazado' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {getEstadoLabel(candidato.estado)}
+                    </span>
+                  </div>
+
+                  {/* Botones de acción según el estado */}
+                  <div className="flex flex-wrap gap-2">
+                    {candidato.estado === 'nuevo' && (
+                      <>
+                        <button
+                          onClick={marcarCitado}
+                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Marcar como Citado
+                        </button>
+                        <button
+                          onClick={marcarEntrevistado}
+                          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Marcar como Entrevistado
+                        </button>
+                        <button
+                          onClick={marcarNoAsistio}
+                          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          No asistió
+                        </button>
+                      </>
+                    )}
+
+                    {candidato.estado === 'formularios_completados' && (
+                      <button
+                        onClick={marcarEntrevistado}
+                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Marcar como Entrevistado
+                      </button>
+                    )}
+                    
+                    {candidato.estado === 'citado' && (
+                      <>
+                        <button
+                          onClick={marcarEntrevistado}
+                          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Marcar como Entrevistado
+                        </button>
+                        <button
+                          onClick={marcarNoAsistio}
+                          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          No asistió
+                        </button>
+                      </>
+                    )}
+                    
+                    {candidato.estado === 'entrevistado' && (
+                      <>
+                        <button
+                          onClick={() => cambiarEstado('aprobado', '¿Está seguro de aprobar este candidato?')}
+                          className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
+                        >
+                          <Award className="h-4 w-4 mr-2" />
+                          Aprobar
+                        </button>
+                        <button
+                          onClick={() => cambiarEstado('rechazado', '¿Está seguro de rechazar este candidato?')}
+                          className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Rechazar
+                        </button>
+                      </>
+                    )}
+                    
+                    {(candidato.estado === 'no_asistio' || candidato.estado === 'aprobado' || candidato.estado === 'rechazado') && (
+                      <div className="text-sm text-gray-600 italic p-2 bg-gray-50 rounded">
+                        No hay más acciones disponibles para este estado.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -50,19 +50,13 @@ export default function NuevoCandidato() {
     setFormData({
       ...formData,
       nacionalidad,
-      tipo_documento: nacionalidad === 'Colombiano' ? 'CC' : ''
+      tipo_documento: nacionalidad === 'Colombiano' ? 'CC' : '',
+      numero_documento: ''
     })
   }
 
-  // Lógica condicional para mostrar/ocultar oleada
-  const mostrarOleada = () => {
-    const clientesConOleada = ['Claro', 'Obamacare', 'Majority']
-    return clientesConOleada.includes(formData.cliente)
-  }
-
-  // Obtener cargos según cliente seleccionado
   const getCargosDisponibles = () => {
-    if (!formData.cliente || !catalogos) return []
+    if (!formData.cliente) return []
     
     switch (formData.cliente) {
       case 'Staff Operacional':
@@ -79,48 +73,40 @@ export default function NuevoCandidato() {
     }
   }
 
+  const esClienteStaff = (cliente) => {
+    return cliente === 'Staff Operacional' || cliente === 'Staff Administrativo'
+  }
+
+  const combinarFechaHora = (fecha, hora) => {
+    if (!fecha || !hora) return null
+    return `${fecha} ${hora}:00`
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    // Validar campos requeridos (cédula y email ahora opcionales)
-    const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
-                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento']
-    
-    for (const field of requiredFields) {
-      if (!formData[field]) {
-        alert(`Por favor completa el campo: ${field.replace(/_/g, ' ')}`)
-        return
-      }
-    }
-
-    // Validar oleada si es requerida
-    if (mostrarOleada() && !formData.oleada) {
-      alert('Por favor completa el campo: oleada')
-      return
-    }
+    setSaving(true)
     
     try {
-      setSaving(true)
+      const fechaCompleta = combinarFechaHora(formData.fecha_citacion_entrevista, formData.hora_citacion_entrevista)
       
-      // Combinar fecha y hora para enviar al backend
-      const dataToSend = { ...formData };
-      if (formData.fecha_citacion_entrevista && formData.hora_citacion_entrevista) {
-        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T${formData.hora_citacion_entrevista}:00`;
-      } else if (formData.fecha_citacion_entrevista) {
-        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T00:00:00`;
-      } else {
-        dataToSend.fecha_citacion_entrevista = null;
+      const candidatoData = {
+        ...formData,
+        fecha_citacion_entrevista: fechaCompleta
       }
       
-      // Remover el campo de hora separado antes de enviar
-      delete dataToSend.hora_citacion_entrevista;
+      delete candidatoData.hora_citacion_entrevista
       
-      const response = await ApiService.crearCandidato(dataToSend)
-      alert(`Candidato creado exitosamente. Token: ${response.candidato.token_acceso}`)
+      console.log('Enviando datos del candidato:', candidatoData)
+      
+      const response = await ApiService.crearCandidato(candidatoData)
+      console.log('Candidato creado:', response)
+      
+      alert('Candidato creado exitosamente')
       navigate('/hydra/reclutador/candidatos')
     } catch (error) {
       console.error('Error creando candidato:', error)
-      alert('Error al crear el candidato. Verifica los datos e intenta nuevamente.')
+      const mensaje = error.response?.data?.error || error.message || 'Error desconocido'
+      alert(`Error al crear candidato: ${mensaje}`)
     } finally {
       setSaving(false)
     }
@@ -183,9 +169,9 @@ export default function NuevoCandidato() {
                     >
                       <option value="">Selecciona nacionalidad</option>
                       {catalogos.nacionalidades?.length > 0 ? (
-                        catalogos.nacionalidades.map((nac) => (
-                          <option key={nac.value} value={nac.value}>
-                            {nac.label}
+                        catalogos.nacionalidades.map((nacionalidad) => (
+                          <option key={nacionalidad.value} value={nacionalidad.value}>
+                            {nacionalidad.label}
                           </option>
                         ))
                       ) : (
@@ -196,7 +182,7 @@ export default function NuevoCandidato() {
                       )}
                     </select>
                   </div>
-                  
+
                   {/* Tipo de Documento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -215,7 +201,6 @@ export default function NuevoCandidato() {
                         onChange={(e) => setFormData({...formData, tipo_documento: e.target.value})}
                         required
                         className="input-field"
-                        disabled={!formData.nacionalidad || formData.nacionalidad === 'Colombiano'}
                       >
                         <option value="">Selecciona tipo</option>
                         {catalogos.tipos_documento_extranjero?.length > 0 ? (
@@ -235,26 +220,27 @@ export default function NuevoCandidato() {
                       </select>
                     )}
                   </div>
-                  
+
                   {/* Número de Documento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Número de Documento
+                      Número de Documento *
                     </label>
                     <input
                       type="text"
                       value={formData.numero_documento}
                       onChange={(e) => {
-                        // Solo números
-                        const value = e.target.value.replace(/\D/g, '')
+                        // Solo permitir números para documentos colombianos
+                        const value = formData.nacionalidad === 'Colombiano' ? e.target.value.replace(/[^0-9]/g, '') : e.target.value
                         setFormData({...formData, numero_documento: value})
                       }}
+                      required
                       className="input-field"
                       placeholder="12345678"
                       pattern="[0-9]*"
                     />
                   </div>
-                  
+
                   {/* Primer Apellido */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -269,7 +255,7 @@ export default function NuevoCandidato() {
                       placeholder="Apellido del candidato"
                     />
                   </div>
-                  
+
                   {/* Primer Nombre */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -284,7 +270,7 @@ export default function NuevoCandidato() {
                       placeholder="Nombre del candidato"
                     />
                   </div>
-                  
+
                   {/* Email Personal */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -299,19 +285,19 @@ export default function NuevoCandidato() {
                       placeholder="candidato@email.com"
                     />
                   </div>
-                  
+
                   {/* Número Celular */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                       <Phone className="h-4 w-4 mr-1" />
-                      Número de Celular *
+                      Número Celular *
                     </label>
                     <input
                       type="tel"
                       value={formData.numero_celular}
                       onChange={(e) => {
-                        // Solo números
-                        const value = e.target.value.replace(/\D/g, '')
+                        // Solo permitir números
+                        const value = e.target.value.replace(/[^0-9]/g, '')
                         setFormData({...formData, numero_celular: value})
                       }}
                       required
@@ -338,7 +324,9 @@ export default function NuevoCandidato() {
                     </label>
                     <select
                       value={formData.cliente}
-                      onChange={(e) => setFormData({...formData, cliente: e.target.value, cargo: ''})}
+                      onChange={(e) => {
+                        setFormData({...formData, cliente: e.target.value, cargo: '', oleada: ''})
+                      }}
                       required
                       className="input-field"
                     >
@@ -360,34 +348,32 @@ export default function NuevoCandidato() {
                       )}
                     </select>
                   </div>
-                  
-                  {/* Oleada - Solo visible si cliente NO es Staff */}
-                  {mostrarOleada() && (
+
+                  {/* Oleada - Solo visible si no es Staff */}
+                  {!esClienteStaff(formData.cliente) && formData.cliente && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Oleada *
+                        Oleada
                       </label>
                       <input
                         type="text"
                         value={formData.oleada}
                         onChange={(e) => setFormData({...formData, oleada: e.target.value})}
-                        required={mostrarOleada()}
                         className="input-field"
                         placeholder="Q4-2024, Enero-2025..."
                       />
                     </div>
                   )}
-                  
-                  {/* Ciudad que Aplica */}
+
+                  {/* Ciudad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                       <MapPin className="h-4 w-4 mr-1" />
-                      Ciudad que Aplica *
+                      Ciudad
                     </label>
                     <select
                       value={formData.ciudad}
                       onChange={(e) => setFormData({...formData, ciudad: e.target.value})}
-                      required
                       className="input-field"
                     >
                       <option value="">Selecciona ciudad</option>
@@ -405,117 +391,63 @@ export default function NuevoCandidato() {
                       )}
                     </select>
                   </div>
-                  
-                  {/* Cargo que Aplica */}
+
+                  {/* Cargo */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cargo que Aplica *
+                      Cargo *
                     </label>
-                    <select
-                      value={formData.cargo}
-                      onChange={(e) => setFormData({...formData, cargo: e.target.value})}
-                      required
-                      className="input-field"
-                      disabled={!formData.cliente}
-                    >
-                      <option value="">
-                        {formData.cliente ? 'Selecciona cargo' : 'Primero selecciona un cliente'}
-                      </option>
-                      {getCargosDisponibles().length > 0 ? (
-                        getCargosDisponibles().map((cargo) => (
-                          <option key={cargo} value={cargo}>
-                            {cargo}
-                          </option>
-                        ))
-                      ) : formData.cliente ? (
-                        <>
-                          {formData.cliente === 'Staff Operacional' || formData.cliente === 'Staff Administrativo' ? (
-                            <>
-                              <option value="Analista Administrativa Y Contable">Analista Administrativa Y Contable</option>
-                              <option value="Analista De Calidad">Analista De Calidad</option>
-                              <option value="Analista De Calidad Pe">Analista De Calidad Pe</option>
-                              <option value="Analista De Contratacion">Analista De Contratacion</option>
-                              <option value="Analista De Reclutamiento">Analista De Reclutamiento</option>
-                              <option value="Analista De Seleccion">Analista De Seleccion</option>
-                              <option value="Analista De Usuarios">Analista De Usuarios</option>
-                              <option value="Analista PQR">Analista PQR</option>
-                              <option value="Auditor/Gestor Calidad Comercial">Auditor/Gestor Calidad Comercial</option>
-                              <option value="Auxiliar De Gestion Humana">Auxiliar De Gestion Humana</option>
-                              <option value="Auxiliar De Servicios Generales">Auxiliar De Servicios Generales</option>
-                              <option value="Auxiliar Juridico">Auxiliar Juridico</option>
-                              <option value="Auxiliar Mantenimiento">Auxiliar Mantenimiento</option>
-                              <option value="Auxiliar SST">Auxiliar SST</option>
-                              <option value="Ayudante De Obra">Ayudante De Obra</option>
-                              <option value="Backoffice">Backoffice</option>
-                              <option value="Backoffice Pe">Backoffice Pe</option>
-                              <option value="Community Manager">Community Manager</option>
-                              <option value="Contador">Contador</option>
-                              <option value="Coordinador">Coordinador</option>
-                              <option value="Coordinador BackOffice">Coordinador BackOffice</option>
-                              <option value="Coordinador Datamarshall">Coordinador Datamarshall</option>
-                              <option value="Coordinador De Contratacion">Coordinador De Contratacion</option>
-                              <option value="Coordinador De Nomina">Coordinador De Nomina</option>
-                              <option value="Coordinador De Tecnologia">Coordinador De Tecnologia</option>
-                              <option value="Coordinador De Usuarios">Coordinador De Usuarios</option>
-                              <option value="Coordinador Pe">Coordinador Pe</option>
-                              <option value="Coordinador Tecnico">Coordinador Tecnico</option>
-                              <option value="Coordinadora Backoffice">Coordinadora Backoffice</option>
-                              <option value="Coordinadora De Calidad">Coordinadora De Calidad</option>
-                              <option value="Datamarshall">Datamarshall</option>
-                              <option value="Datamarshall Senior Pe">Datamarshall Senior Pe</option>
-                              <option value="Desarrollador Web">Desarrollador Web</option>
-                              <option value="Director de formación">Director de formación</option>
-                              <option value="Director de Operaciones">Director de Operaciones</option>
-                              <option value="Director de Operaciones Pe">Director de Operaciones Pe</option>
-                              <option value="Director De Tecnologia">Director De Tecnologia</option>
-                              <option value="Diseñador Grafico">Diseñador Grafico</option>
-                              <option value="Formador">Formador</option>
-                              <option value="Formador Pe">Formador Pe</option>
-                              <option value="Formador Senior">Formador Senior</option>
-                              <option value="Gestora De Marketing Y Calidad De Se">Gestora De Marketing Y Calidad De Se</option>
-                              <option value="GTR">GTR</option>
-                              <option value="Jefe Backoffice">Jefe Backoffice</option>
-                              <option value="Jefe De Manteniminento">Jefe De Manteniminento</option>
-                              <option value="Jefe de operacion">Jefe de operacion</option>
-                              <option value="Jefe de workforce">Jefe de workforce</option>
-                              <option value="Jefe Financiero">Jefe Financiero</option>
-                              <option value="Jefe Juridica">Jefe Juridica</option>
-                              <option value="Legalizador">Legalizador</option>
-                              <option value="Maestro De Obra">Maestro De Obra</option>
-                              <option value="Profesional De SST">Profesional De SST</option>
-                              <option value="Psicologo De Seleccion">Psicologo De Seleccion</option>
-                              <option value="Recepcionista">Recepcionista</option>
-                              <option value="Subgerente De Operaciones">Subgerente De Operaciones</option>
-                              <option value="Tecnico De Soporte">Tecnico De Soporte</option>
-                              <option value="Staff">Staff</option>
-                            </>
-                          ) : formData.cliente === 'Claro' ? (
-                            <>
+                    {formData.cliente ? (
+                      <select
+                        value={formData.cargo}
+                        onChange={(e) => setFormData({...formData, cargo: e.target.value})}
+                        required
+                        className="input-field"
+                      >
+                        <option value="">
+                          {getCargosDisponibles().length === 0 ? 'Selecciona un cliente primero' : 'Selecciona cargo'}
+                        </option>
+                        {esClienteStaff(formData.cliente) ? (
+                          getCargosDisponibles().map((cargo) => (
+                            <option key={cargo} value={cargo}>
+                              {cargo}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            {formData.cliente === 'Claro' && (
+                              <>
+                                <option value="Agente Call Center">Agente Call Center</option>
+                                <option value="Agente Call Center Plus">Agente Call Center Plus</option>
+                              </>
+                            )}
+                            {formData.cliente === 'Obamacare' && (
+                              <>
+                                <option value="Customer Service">Customer Service</option>
+                                <option value="Agente Call Center">Agente Call Center</option>
+                              </>
+                            )}
+                            {formData.cliente === 'Majority' && (
                               <option value="Agente Call Center">Agente Call Center</option>
-                              <option value="Agente Call Center Plus">Agente Call Center Plus</option>
-                            </>
-                          ) : formData.cliente === 'Obamacare' ? (
-                            <>
-                              <option value="Customer Service">Customer Service</option>
-                              <option value="Agente Call Center">Agente Call Center</option>
-                            </>
-                          ) : formData.cliente === 'Majority' ? (
-                            <option value="Agente Call Center">Agente Call Center</option>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </select>
+                            )}
+                          </>
+                        )}
+                      </select>
+                    ) : (
+                      <select disabled className="input-field bg-gray-100">
+                        <option>Selecciona un cliente primero</option>
+                      </select>
+                    )}
                   </div>
-                  
+
                   {/* Fuente de Reclutamiento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fuente de Reclutamiento *
+                      Fuente de Reclutamiento
                     </label>
                     <select
                       value={formData.fuente_reclutamiento}
                       onChange={(e) => setFormData({...formData, fuente_reclutamiento: e.target.value})}
-                      required
                       className="input-field"
                     >
                       <option value="">Selecciona fuente</option>
@@ -540,11 +472,11 @@ export default function NuevoCandidato() {
                       )}
                     </select>
                   </div>
-                  
-                  {/* Fecha de Citación a Entrevista */}
+
+                  {/* Fecha de Citación */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha de Citación a Entrevista
+                      Fecha de Citación
                     </label>
                     <input
                       type="date"
@@ -553,11 +485,11 @@ export default function NuevoCandidato() {
                       className="input-field"
                     />
                   </div>
-                  
-                  {/* Hora de Citación a Entrevista */}
+
+                  {/* Hora de Citación */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Hora de Citación a Entrevista
+                      Hora de Citación
                     </label>
                     <input
                       type="time"
@@ -672,8 +604,8 @@ export default function NuevoCandidato() {
             </form>
           </div>
         </div>
+        </div>
       </div>
     </div>
-  </div>
   )
 }
