@@ -122,10 +122,13 @@ export default function ListaCandidatos() {
   const candidatosFiltrados = candidatos.filter(candidato => {
     const searchLower = searchTerm.toLowerCase()
     return (
-      candidato.primer_nombre.toLowerCase().includes(searchLower) ||
-      candidato.primer_apellido.toLowerCase().includes(searchLower) ||
-      candidato.email_personal.toLowerCase().includes(searchLower) ||
-      candidato.numero_documento.includes(searchTerm)
+      (candidato.primer_nombre || '').toLowerCase().includes(searchLower) ||
+      (candidato.primer_apellido || '').toLowerCase().includes(searchLower) ||
+      (candidato.email_personal || '').toLowerCase().includes(searchLower) ||
+      (candidato.numero_documento || '').includes(searchTerm) ||
+      (candidato.numero_celular || '').includes(searchTerm) ||
+      (candidato.cliente || '').toLowerCase().includes(searchLower) ||
+      (candidato.cargo || '').toLowerCase().includes(searchLower)
     )
   })
 
