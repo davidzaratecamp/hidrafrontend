@@ -1,5 +1,5 @@
 const getApiBaseUrl = () => {
-  return import.meta.env.DEV ? 'http://localhost:3000/api' : 'http://200.91.204.54/api';
+  return import.meta.env.DEV ? 'http://localhost:3000/api' : 'http://200.91.204.54:3000/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
