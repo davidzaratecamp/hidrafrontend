@@ -30,7 +30,9 @@ export default function ListaCandidatos() {
     nuevo: { label: 'Nuevos', color: 'bg-gray-100 text-gray-800' },
     contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
     formularios_enviados: { label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800' },
-    formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800' }
+    formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800' },
+    aprobado: { label: 'Aprobados', color: 'bg-emerald-100 text-emerald-800' },
+    rechazado: { label: 'Rechazados', color: 'bg-red-100 text-red-800' }
   }
 
   const estadosContactoFallido = {
