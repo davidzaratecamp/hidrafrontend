@@ -527,6 +527,7 @@ export default function NuevoCandidato() {
                         ))
                       ) : (
                         <>
+                          <option value="Computrabajo">Computrabajo</option>
                           <option value="Portal Web">Portal Web</option>
                           <option value="LinkedIn">LinkedIn</option>
                           <option value="Referido Empleado">Referido Empleado</option>

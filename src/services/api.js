@@ -173,6 +173,51 @@ class ApiService {
   async getProgresoFormularios() {
     return this.get('/candidato/analytics/progreso');
   }
+
+  // Admin Methods
+  async delete(endpoint) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return;
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('DELETE Error:', error);
+      throw error;
+    }
+  }
+
+  async getReclutadores() {
+    return this.get('/auth/admin/reclutadores');
+  }
+
+  async crearReclutador(data) {
+    return this.post('/auth/admin/reclutadores', data);
+  }
+
+  async eliminarReclutador(reclutadorId) {
+    return this.delete(`/auth/admin/reclutadores/${reclutadorId}`);
+  }
+
+  async reasignarCandidatos(reclutadorOrigenId, reclutadorDestinoId) {
+    return this.post('/auth/admin/reasignar-candidatos', {
+      reclutadorOrigenId,
+      reclutadorDestinoId
+    });
+  }
 }
 
 export default new ApiService();

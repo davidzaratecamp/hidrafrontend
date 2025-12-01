@@ -9,7 +9,8 @@ import {
   LogOut,
   User,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -41,12 +42,21 @@ export default function Sidebar() {
       icon: BarChart3,
       label: 'Estadísticas',
       permission: 'ver_estadisticas'
+    },
+    {
+      path: '/hydra/admin/reclutadores',
+      icon: Settings,
+      label: 'Admin Panel',
+      adminOnly: true
     }
   ]
 
-  const filteredMenuItems = menuItems.filter(item => 
-    !item.permission || hasPermission(item.permission)
-  )
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.adminOnly) {
+      return user?.rol === 'administrador'
+    }
+    return !item.permission || hasPermission(item.permission)
+  })
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)

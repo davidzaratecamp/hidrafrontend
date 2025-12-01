@@ -21,7 +21,10 @@ export default function ListaCandidatos() {
   const navigate = useNavigate()
   const [candidatos, setCandidatos] = useState([])
   const [resumenEstados, setResumenEstados] = useState({})
-  const [estadoActivo, setEstadoActivo] = useState('nuevo')
+  const [estadoActivo, setEstadoActivo] = useState(() => {
+    // Preservar el estado del filtro en localStorage
+    return localStorage.getItem('listaCandidatos_estadoActivo') || 'nuevo'
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [mostrarContactosFallidos, setMostrarContactosFallidos] = useState(false)
@@ -31,8 +34,8 @@ export default function ListaCandidatos() {
     contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
     formularios_enviados: { label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800' },
     formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800' },
-    aprobado: { label: 'Aprobados', color: 'bg-emerald-100 text-emerald-800' },
-    rechazado: { label: 'Rechazados', color: 'bg-red-100 text-red-800' }
+    citado: { label: 'Citados', color: 'bg-purple-100 text-purple-800' },
+    entrevistado: { label: 'Entrevistados', color: 'bg-indigo-100 text-indigo-800' }
   }
 
   const estadosContactoFallido = {
@@ -50,6 +53,11 @@ export default function ListaCandidatos() {
 
   useEffect(() => {
     cargarCandidatos()
+  }, [estadoActivo])
+
+  // Guardar el estado activo en localStorage cuando cambie
+  useEffect(() => {
+    localStorage.setItem('listaCandidatos_estadoActivo', estadoActivo)
   }, [estadoActivo])
 
   const cargarResumenEstados = async () => {
@@ -172,11 +180,11 @@ export default function ListaCandidatos() {
     if (candidato.estado === 'citado') {
       return (
         <button
-          onClick={() => handleMarcarNoAsistio(candidato.id, candidato)}
-          className="flex items-center px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors"
+          onClick={() => handleReenviarEmail(candidato.id)}
+          className="flex items-center px-2 py-1 lg:px-3 lg:py-1 bg-blue-600 text-white rounded text-xs lg:text-sm hover:bg-blue-700 transition-colors"
         >
-          <Clock className="h-4 w-4 mr-1" />
-          No asistió
+          <Mail className="h-3 w-3 lg:h-4 lg:w-4 mr-1 flex-shrink-0" />
+          <span className="hidden sm:inline">Email</span>
         </button>
       )
     }

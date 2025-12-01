@@ -15,6 +15,7 @@ import Estudios from './components/candidato/Estudios'
 import Experiencia from './components/candidato/Experiencia'
 import Personal from './components/candidato/Personal'
 import Consentimiento from './components/candidato/Consentimiento'
+import GestionReclutadores from './components/admin/GestionReclutadores'
 
 function App() {
   return (
@@ -92,6 +93,16 @@ function App() {
               element={
                 <ProtectedRoute roles={['seleccion', 'administrador']}>
                   <PerfilCandidato />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Rutas protegidas para administrador */}
+            <Route 
+              path="/hydra/admin/reclutadores" 
+              element={
+                <ProtectedRoute roles={['administrador']}>
+                  <GestionReclutadores />
                 </ProtectedRoute>
               } 
             />
