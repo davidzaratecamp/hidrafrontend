@@ -855,22 +855,12 @@ export default function PerfilCandidato() {
                     )}
                     
                     {candidato.estado === 'entrevistado' && (
-                      <>
-                        <button
-                          onClick={() => cambiarEstado('aprobado', '¿Está seguro de aprobar este candidato?')}
-                          className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
-                        >
-                          <Award className="h-4 w-4 mr-2" />
-                          Aprobar
-                        </button>
-                        <button
-                          onClick={() => cambiarEstado('rechazado', '¿Está seguro de rechazar este candidato?')}
-                          className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
-                        >
-                          <Shield className="h-4 w-4 mr-2" />
-                          Rechazar
-                        </button>
-                      </>
+                      <div className="text-sm text-gray-600 italic p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-2 text-blue-600" />
+                          <span>Candidato entrevistado. La aprobación/rechazo corresponde al área de Selección.</span>
+                        </div>
+                      </div>
                     )}
                     
                     {(candidato.estado === 'no_asistio' || candidato.estado === 'aprobado' || candidato.estado === 'rechazado') && (
