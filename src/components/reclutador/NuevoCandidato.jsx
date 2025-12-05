@@ -93,6 +93,12 @@ export default function NuevoCandidato() {
       }
     }
 
+    // Validar número de documento solo si las observaciones indican "contacto exitoso"
+    if (formData.observaciones_llamada === 'Contacto exitoso' && !formData.numero_documento) {
+      alert('El número de identificación es obligatorio cuando el estado de la llamada es "Contacto exitoso"')
+      return
+    }
+
     // Validar oleada si es requerida
     if (mostrarOleada() && !formData.oleada) {
       alert('Por favor completa el campo: oleada')
@@ -111,6 +117,19 @@ export default function NuevoCandidato() {
       } else {
         dataToSend.fecha_citacion_entrevista = null;
       }
+      
+      // Mapear observaciones de llamada al estado del sistema
+      const estadoMap = {
+        'Contacto exitoso': 'contacto_exitoso',
+        'Contacto fallido': 'contacto_fallido', 
+        'No contesta': 'no_contesta',
+        'Reagendar': 'reagendar',
+        'No interesado': 'no_interesado',
+        'Numero incorrecto': 'numero_incorrecto',
+        'No apto': 'contacto_fallido'
+      };
+      
+      dataToSend.estado = estadoMap[formData.observaciones_llamada] || 'nuevo';
       
       // Remover el campo de hora separado antes de enviar
       delete dataToSend.hora_citacion_entrevista;
@@ -240,6 +259,9 @@ export default function NuevoCandidato() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Número de Documento
+                      {formData.observaciones_llamada === 'Contacto exitoso' && (
+                        <span className="text-red-500 ml-1">*</span>
+                      )}
                     </label>
                     <input
                       type="text"
@@ -249,9 +271,14 @@ export default function NuevoCandidato() {
                         const value = e.target.value.replace(/\D/g, '')
                         setFormData({...formData, numero_documento: value})
                       }}
-                      className="input-field"
+                      className={`input-field ${
+                        formData.observaciones_llamada === 'Contacto exitoso' && !formData.numero_documento
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                          : ''
+                      }`}
                       placeholder="12345678"
                       pattern="[0-9]*"
+                      required={formData.observaciones_llamada === 'Contacto exitoso'}
                     />
                   </div>
                   
