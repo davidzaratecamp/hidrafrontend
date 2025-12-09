@@ -30,7 +30,6 @@ export default function ListaCandidatos() {
   const [mostrarContactosFallidos, setMostrarContactosFallidos] = useState(false)
 
   const estadosConfig = {
-    nuevo: { label: 'Nuevos', color: 'bg-gray-100 text-gray-800' },
     contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
     formularios_enviados: { label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800' },
     formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800' },
@@ -141,14 +140,14 @@ export default function ListaCandidatos() {
   })
 
   const getAccionButton = (candidato) => {
-    if (candidato.estado === 'nuevo') {
+    if (candidato.estado === 'contacto_exitoso') {
       return (
         <button
-          onClick={() => handleReenviarEmail(candidato.id)}
-          className="flex items-center px-2 py-1 lg:px-3 lg:py-1 bg-blue-600 text-white rounded text-xs lg:text-sm hover:bg-blue-700 transition-colors"
+          onClick={() => handleCambiarEstado(candidato.id, candidato, 'citado', 'Marcar como Citado')}
+          className="flex items-center px-2 py-1 lg:px-3 lg:py-1 bg-purple-600 text-white rounded text-xs lg:text-sm hover:bg-purple-700 transition-colors"
         >
-          <Mail className="h-3 w-3 lg:h-4 lg:w-4 mr-1 flex-shrink-0" />
-          <span className="hidden sm:inline">Enviar</span>
+          <Calendar className="h-3 w-3 lg:h-4 lg:w-4 mr-1 flex-shrink-0" />
+          <span className="hidden sm:inline">Citar</span>
         </button>
       )
     }
@@ -166,6 +165,18 @@ export default function ListaCandidatos() {
     }
     
     if (candidato.estado === 'nuevo') {
+      return (
+        <button
+          onClick={() => handleCambiarEstado(candidato.id, candidato, 'citado', 'Marcar como Citado')}
+          className="flex items-center px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
+        >
+          <Calendar className="h-4 w-4 mr-1" />
+          Citar
+        </button>
+      )
+    }
+
+    if (candidato.estado === 'contacto_exitoso') {
       return (
         <button
           onClick={() => handleCambiarEstado(candidato.id, candidato, 'citado', 'Marcar como Citado')}

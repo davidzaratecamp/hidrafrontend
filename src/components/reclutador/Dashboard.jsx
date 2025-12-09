@@ -95,7 +95,7 @@ export default function Dashboard() {
   ]
 
   const estadosDetalle = [
-    { estado: 'nuevo', label: 'Nuevos', color: 'bg-gray-100 text-gray-800', count: resumenEstados.nuevo || 0 },
+    { estado: 'contacto_exitoso', label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800', count: resumenEstados.contacto_exitoso || 0 },
     { estado: 'contacto_fallido', label: 'Contacto Fallido', color: 'bg-red-100 text-red-800', count: resumenEstados.contacto_fallido || 0 },
     { estado: 'no_contesta', label: 'No Contesta', color: 'bg-orange-100 text-orange-800', count: resumenEstados.no_contesta || 0 },
     { estado: 'reagendar', label: 'Reagendar', color: 'bg-yellow-100 text-yellow-800', count: resumenEstados.reagendar || 0 },

@@ -84,7 +84,7 @@ export default function NuevoCandidato() {
     
     // Validar campos requeridos (cédula y email ahora opcionales)
     const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
-                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento']
+                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento', 'observaciones_llamada']
     
     for (const field of requiredFields) {
       if (!formData[field]) {
@@ -608,11 +608,12 @@ export default function NuevoCandidato() {
                   {/* Observaciones de Llamada */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Observaciones de Llamada
+                      Observaciones de Llamada *
                     </label>
                     <select
                       value={formData.observaciones_llamada}
                       onChange={(e) => setFormData({...formData, observaciones_llamada: e.target.value})}
+                      required
                       className="input-field"
                     >
                       <option value="">Selecciona observación</option>

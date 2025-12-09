@@ -141,7 +141,7 @@ export default function EditarCandidato() {
     
     // Validar campos requeridos
     const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
-                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento']
+                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento', 'observaciones_llamada']
     
     for (const field of requiredFields) {
       if (!formData[field]) {
@@ -167,6 +167,22 @@ export default function EditarCandidato() {
         dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T00:00:00`;
       } else {
         dataToSend.fecha_citacion_entrevista = null;
+      }
+      
+      // Mapear observaciones de llamada al estado del sistema
+      const estadoMap = {
+        'Contacto exitoso': 'contacto_exitoso',
+        'Contacto fallido': 'contacto_fallido', 
+        'No contesta': 'no_contesta',
+        'Reagendar': 'reagendar',
+        'No interesado': 'no_interesado',
+        'Numero incorrecto': 'numero_incorrecto',
+        'No apto': 'contacto_fallido'
+      };
+      
+      // Solo actualizar el estado si se ha seleccionado una observación de llamada
+      if (formData.observaciones_llamada && estadoMap[formData.observaciones_llamada]) {
+        dataToSend.estado = estadoMap[formData.observaciones_llamada];
       }
       
       // Remover el campo de hora separado antes de enviar
@@ -600,11 +616,12 @@ export default function EditarCandidato() {
                   {/* Observaciones de Llamada */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Observaciones de Llamada
+                      Observaciones de Llamada *
                     </label>
                     <select
                       value={formData.observaciones_llamada}
                       onChange={(e) => setFormData({...formData, observaciones_llamada: e.target.value})}
+                      required
                       className="input-field"
                     >
                       <option value="">Selecciona observación</option>
