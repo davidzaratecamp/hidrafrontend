@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { UserPlus, Building, MapPin, Phone, Mail, FileText, Save, ArrowLeft, User, Briefcase, MessageSquare } from 'lucide-react'
 import Sidebar from './Sidebar'
+import SidebarSeleccion from '../seleccion/SidebarSeleccion'
 import ApiService from '../../services/api'
 
 export default function NuevoCandidato() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [saving, setSaving] = useState(false)
+  
+  // Detectar si venimos del módulo de selección basado en el estado de navegación o parámetros URL
+  const urlParams = new URLSearchParams(location.search)
+  const isSeleccionModule = location.state?.from?.includes('/seleccion/') || urlParams.get('from') === 'seleccion'
+  
+  // Componente sidebar apropiado
+  const SidebarComponent = isSeleccionModule ? SidebarSeleccion : Sidebar
   const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
     // Datos principales
@@ -136,7 +145,7 @@ export default function NuevoCandidato() {
       
       const response = await ApiService.crearCandidato(dataToSend)
       alert(`Candidato creado exitosamente. Token: ${response.candidato.token_acceso}`)
-      navigate('/hydra/reclutador/candidatos')
+      navigate(isSeleccionModule ? '/hydra/seleccion/candidatos' : '/hydra/reclutador/candidatos')
     } catch (error) {
       console.error('Error creando candidato:', error)
       alert('Error al crear el candidato. Verifica los datos e intenta nuevamente.')
@@ -147,7 +156,7 @@ export default function NuevoCandidato() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <SidebarComponent />
       
       <div className="flex-1 lg:ml-64">
         <div className="p-4 lg:p-8 pt-20 lg:pt-8 max-w-4xl mx-auto">
@@ -158,7 +167,7 @@ export default function NuevoCandidato() {
                 <p className="text-sm lg:text-base text-gray-600">Registrar un nuevo candidato en el sistema de reclutamiento</p>
               </div>
               <button
-                onClick={() => navigate('/hydra/reclutador/candidatos')}
+                onClick={() => navigate(isSeleccionModule ? '/hydra/seleccion/candidatos' : '/hydra/reclutador/candidatos')}
                 className="btn-secondary flex items-center"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -674,7 +683,7 @@ export default function NuevoCandidato() {
               <div className="flex justify-end space-x-4 pt-6 border-t">
                 <button
                   type="button"
-                  onClick={() => navigate('/hydra/reclutador/candidatos')}
+                  onClick={() => navigate(isSeleccionModule ? '/hydra/seleccion/candidatos' : '/hydra/reclutador/candidatos')}
                   className="btn-secondary"
                 >
                   Cancelar

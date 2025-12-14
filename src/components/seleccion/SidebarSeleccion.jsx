@@ -4,7 +4,10 @@ import {
   FileText,
   Building,
   LogOut,
-  User
+  User,
+  UserPlus,
+  UserCheck,
+  UserX
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -19,11 +22,24 @@ export default function SidebarSeleccion() {
       permission: 'ver_candidatos'
     },
     {
-      path: '/hydra/seleccion/perfiles',
-      icon: FileText,
-      label: 'Perfiles Completos',
-      permission: 'ver_perfiles_completos'
-    }
+      path: '/hydra/seleccion/perfiles-aprobados',
+      icon: UserCheck,
+      label: 'Perfiles Aprobados',
+      permission: 'ver_candidatos'
+    },
+    {
+      path: '/hydra/seleccion/perfiles-rechazados',
+      icon: UserX,
+      label: 'Perfiles Rechazados',
+      permission: 'ver_candidatos'
+    },
+    {
+      path: '/hydra/reclutador/dashboard',
+      icon: UserPlus,
+      label: 'Interfaz Reclutamiento',
+      permission: 'crear_candidatos',
+      openInNewTab: true
+    },
   ]
 
   const filteredMenuItems = menuItems.filter(item => 
@@ -44,10 +60,31 @@ export default function SidebarSeleccion() {
         <nav className="space-y-2">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon
+            
+            // Caso especial: Items que se abren en nueva pestaña
+            if (item.openInNewTab) {
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="sidebar-item rounded-lg flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  title="Abrir interfaz de reclutamiento completa en nueva pestaña"
+                >
+                  <Icon className="h-5 w-5 mr-3" />
+                  {item.label}
+                  <span className="ml-auto text-xs text-gray-400">↗</span>
+                </a>
+              )
+            }
+            
+            // Navegación normal para otros elementos
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
+                state={item.state}
                 className={({ isActive }) =>
                   `sidebar-item rounded-lg ${isActive ? 'active' : ''}`
                 }

@@ -1,21 +1,39 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { 
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase, 
-  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users
+  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users, Edit3
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
 import Sidebar from './Sidebar'
+import SidebarSeleccion from '../seleccion/SidebarSeleccion'
+import { useAuth } from '../../context/AuthContext'
 
 export default function PerfilCandidato() {
   const { candidatoId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
+  
+  // Detectar si estamos en el módulo de selección
+  const isSeleccionModule = location.pathname.includes('/seleccion/')
+  
+  // Componente sidebar apropiado
+  const SidebarComponent = isSeleccionModule ? SidebarSeleccion : Sidebar
   const [candidato, setCandidato] = useState(null)
   const [loading, setLoading] = useState(true)
   const [fechaEntrevista, setFechaEntrevista] = useState('')
   const [editandoFecha, setEditandoFecha] = useState(false)
   const [guardandoFecha, setGuardandoFecha] = useState(false)
+  
+  // Estados para edición de operación y oleada (solo para psicólogos)
+  const [editandoOperacion, setEditandoOperacion] = useState(false)
+  const [nuevaOperacion, setNuevaOperacion] = useState('')
+  const [nuevaCampana, setNuevaCampana] = useState('')
+  const [oleadas, setOleadas] = useState([])
+  const [nuevaOleada, setNuevaOleada] = useState('')
+  const [guardandoOperacion, setGuardandoOperacion] = useState(false)
 
   useEffect(() => {
     cargarPerfil()
@@ -352,6 +370,175 @@ export default function PerfilCandidato() {
     setEditandoFecha(false)
   }
 
+  // Funciones para psicólogos - gestión de operación y oleada
+  const cargarOleadas = async () => {
+    try {
+      const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/seleccion/oleadas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setOleadas(data.oleadas)
+      }
+    } catch (error) {
+      console.error('Error cargando oleadas:', error)
+    }
+  }
+
+  const iniciarEdicionOperacion = () => {
+    setNuevaOperacion(candidato.cliente || '')
+    setNuevaCampana(candidato.cargo || '')
+    setEditandoOperacion(true)
+    cargarOleadas()
+  }
+
+  const actualizarOperacionCampana = async () => {
+    if (!nuevaOperacion || !nuevaCampana) {
+      alert('Operación y campaña son requeridas')
+      return
+    }
+
+    try {
+      setGuardandoOperacion(true)
+      const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
+      const token = localStorage.getItem('token')
+      
+      const response = await fetch(`${API_URL}/api/seleccion/candidatos/${candidatoId}/operacion-campana`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cliente: nuevaOperacion,
+          cargo: nuevaCampana
+        })
+      })
+
+      if (response.ok) {
+        setCandidato(prev => ({
+          ...prev,
+          cliente: nuevaOperacion,
+          cargo: nuevaCampana
+        }))
+        setEditandoOperacion(false)
+        alert('Operación y campaña actualizadas correctamente')
+      } else {
+        const error = await response.json()
+        alert('Error: ' + error.error)
+      }
+    } catch (error) {
+      console.error('Error actualizando operación:', error)
+      alert('Error al actualizar operación')
+    } finally {
+      setGuardandoOperacion(false)
+    }
+  }
+
+  const asignarOleada = async () => {
+    if (!nuevaOleada) {
+      alert('Selecciona una oleada')
+      return
+    }
+
+    try {
+      const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
+      const token = localStorage.getItem('token')
+      
+      const response = await fetch(`${API_URL}/api/seleccion/candidatos/${candidatoId}/oleada`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ oleadaId: nuevaOleada })
+      })
+
+      if (response.ok) {
+        // Recargar perfil para obtener información actualizada de oleada
+        cargarPerfil()
+        alert('Candidato asignado a oleada correctamente')
+      } else {
+        const error = await response.json()
+        alert('Error: ' + error.error)
+      }
+    } catch (error) {
+      console.error('Error asignando oleada:', error)
+      alert('Error al asignar oleada')
+    }
+  }
+
+  const cancelarEdicionOperacion = () => {
+    setEditandoOperacion(false)
+    setNuevaOperacion('')
+    setNuevaCampana('')
+    setNuevaOleada('')
+  }
+
+  const getCargosDisponibles = () => {
+    if (!nuevaOperacion) return []
+    
+    const cargosPorOperacion = {
+      'Staff Operacional': [
+        'Analista Administrativa Y Contable', 'Analista De Calidad', 'Analista De Calidad Pe',
+        'Analista De Contratacion', 'Analista De Reclutamiento', 'Analista De Seleccion',
+        'Analista De Usuarios', 'Analista PQR', 'Auditor/Gestor Calidad Comercial',
+        'Auxiliar De Gestion Humana', 'Auxiliar De Servicios Generales', 'Auxiliar Juridico',
+        'Auxiliar Mantenimiento', 'Auxiliar SST', 'Ayudante De Obra', 'Backoffice',
+        'Backoffice Pe', 'Community Manager', 'Contador', 'Coordinador',
+        'Coordinador BackOffice', 'Coordinador Datamarshall', 'Coordinador De Contratacion',
+        'Coordinador De Nomina', 'Coordinador De Tecnologia', 'Coordinador De Usuarios',
+        'Coordinador Pe', 'Coordinador Tecnico', 'Coordinadora Backoffice',
+        'Coordinadora De Calidad', 'Datamarshall', 'Datamarshall Senior Pe',
+        'Desarrollador Web', 'Director de formación', 'Director de Operaciones',
+        'Director de Operaciones Pe', 'Director De Tecnologia', 'Diseñador Grafico',
+        'Formador', 'Formador Pe', 'Formador Senior', 'Gestora De Marketing Y Calidad De Se',
+        'GTR', 'Jefe Backoffice', 'Jefe De Manteniminento', 'Jefe de operacion',
+        'Jefe de workforce', 'Jefe Financiero', 'Jefe Juridica', 'Legalizador',
+        'Maestro De Obra', 'Profesional De SST', 'Psicologo De Seleccion',
+        'Recepcionista', 'Subgerente De Operaciones', 'Tecnico De Soporte', 'Staff'
+      ],
+      'Staff Administrativo': [
+        'Analista Administrativa Y Contable', 'Analista De Calidad', 'Analista De Calidad Pe',
+        'Analista De Contratacion', 'Analista De Reclutamiento', 'Analista De Seleccion',
+        'Analista De Usuarios', 'Analista PQR', 'Auditor/Gestor Calidad Comercial',
+        'Auxiliar De Gestion Humana', 'Auxiliar De Servicios Generales', 'Auxiliar Juridico',
+        'Auxiliar Mantenimiento', 'Auxiliar SST', 'Ayudante De Obra', 'Backoffice',
+        'Backoffice Pe', 'Community Manager', 'Contador', 'Coordinador',
+        'Coordinador BackOffice', 'Coordinador Datamarshall', 'Coordinador De Contratacion',
+        'Coordinador De Nomina', 'Coordinador De Tecnologia', 'Coordinador De Usuarios',
+        'Coordinador Pe', 'Coordinador Tecnico', 'Coordinadora Backoffice',
+        'Coordinadora De Calidad', 'Datamarshall', 'Datamarshall Senior Pe',
+        'Desarrollador Web', 'Director de formación', 'Director de Operaciones',
+        'Director de Operaciones Pe', 'Director De Tecnologia', 'Diseñador Grafico',
+        'Formador', 'Formador Pe', 'Formador Senior', 'Gestora De Marketing Y Calidad De Se',
+        'GTR', 'Jefe Backoffice', 'Jefe De Manteniminento', 'Jefe de operacion',
+        'Jefe de workforce', 'Jefe Financiero', 'Jefe Juridica', 'Legalizador',
+        'Maestro De Obra', 'Profesional De SST', 'Psicologo De Seleccion',
+        'Recepcionista', 'Subgerente De Operaciones', 'Tecnico De Soporte', 'Staff'
+      ],
+      'Claro': ['Agente Call Center', 'Agente Call Center Plus'],
+      'Obamacare': ['Customer Service', 'Agente Call Center'],
+      'Majority': ['Agente Call Center']
+    }
+    
+    return cargosPorOperacion[nuevaOperacion] || []
+  }
+
+  const getOleadasDisponibles = () => {
+    if (!nuevaOperacion || !nuevaCampana) return []
+    
+    return oleadas.filter(oleada => 
+      oleada.operacion === nuevaOperacion && oleada.campana === nuevaCampana
+    )
+  }
+
   const cambiarEstado = async (nuevoEstado, mensaje) => {
     if (!confirm(mensaje)) {
       return;
@@ -374,16 +561,8 @@ export default function PerfilCandidato() {
     }
   }
 
-  const marcarNoAsistio = () => {
-    cambiarEstado('no_asistio', '¿Está seguro de marcar este candidato como "No asistió"?');
-  }
-
   const marcarCitado = () => {
     cambiarEstado('citado', '¿Está seguro de marcar este candidato como "Citado"?');
-  }
-
-  const marcarEntrevistado = () => {
-    cambiarEstado('entrevistado', '¿Está seguro de marcar este candidato como "Entrevistado"?');
   }
 
   const getEstadoLabel = (estado) => {
@@ -405,7 +584,7 @@ export default function PerfilCandidato() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
+        <SidebarComponent />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -419,7 +598,7 @@ export default function PerfilCandidato() {
   if (!candidato) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
+        <SidebarComponent />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-600">Error: No se pudo cargar el perfil del candidato</p>
@@ -443,14 +622,14 @@ export default function PerfilCandidato() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <SidebarComponent />
       
       <div className="flex-1 lg:ml-64">
         <div className="p-4 lg:p-6 pt-20 lg:pt-6 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/hydra/reclutador/candidatos')}
+                onClick={() => navigate(isSeleccionModule ? '/hydra/seleccion/candidatos' : '/hydra/reclutador/candidatos')}
                 className="btn-secondary flex items-center"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -460,7 +639,18 @@ export default function PerfilCandidato() {
                 <h1 className="text-2xl font-bold text-gray-900">
                   {candidato.primer_nombre} {candidato.primer_apellido}
                 </h1>
-                <p className="text-gray-600">{candidato.cargo} - {candidato.cliente}</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-gray-600">{candidato.cargo} - {candidato.cliente}</p>
+                  {user?.rol === 'seleccion' && (
+                    <button
+                      onClick={iniciarEdicionOperacion}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Editar operación y campaña"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -759,16 +949,6 @@ export default function PerfilCandidato() {
                           {candidato.fecha_citacion_entrevista ? 'Editar' : 'Programar'}
                         </button>
                         
-                        {/* Botón No asistió - solo visible si está citado */}
-                        {candidato.estado === 'citado' && (
-                          <button
-                            onClick={marcarNoAsistio}
-                            className="flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded text-sm hover:bg-orange-200 transition-colors"
-                          >
-                            <Clock className="h-3 w-3 mr-1" />
-                            No asistió
-                          </button>
-                        )}
                       </div>
                     </div>
                   )}
@@ -803,29 +983,13 @@ export default function PerfilCandidato() {
                   {/* DEBUG: candidato.estado = */}{candidato.estado}{/* END DEBUG */}
                   <div className="flex flex-wrap gap-2">
                     {candidato.estado === 'nuevo' && (
-                      <>
-                        <button
-                          onClick={marcarCitado}
-                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Marcar como Citado
-                        </button>
-                        <button
-                          onClick={marcarEntrevistado}
-                          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                        >
-                          <Users className="h-4 w-4 mr-2" />
-                          Marcar como Entrevistado
-                        </button>
-                        <button
-                          onClick={marcarNoAsistio}
-                          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
-                        >
-                          <Clock className="h-4 w-4 mr-2" />
-                          No asistió
-                        </button>
-                      </>
+                      <button
+                        onClick={marcarCitado}
+                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Marcar como Citado
+                      </button>
                     )}
 
                     {candidato.estado === 'contacto_exitoso' && (
@@ -840,31 +1004,21 @@ export default function PerfilCandidato() {
 
                     {candidato.estado === 'formularios_completados' && (
                       <button
-                        onClick={marcarEntrevistado}
-                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+                        onClick={marcarCitado}
+                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
                       >
-                        <Users className="h-4 w-4 mr-2" />
-                        Marcar como Entrevistado
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Marcar como Citado
                       </button>
                     )}
                     
                     {candidato.estado === 'citado' && (
-                      <>
-                        <button
-                          onClick={marcarEntrevistado}
-                          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                        >
-                          <Users className="h-4 w-4 mr-2" />
-                          Marcar como Entrevistado
-                        </button>
-                        <button
-                          onClick={marcarNoAsistio}
-                          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
-                        >
-                          <Clock className="h-4 w-4 mr-2" />
-                          No asistió
-                        </button>
-                      </>
+                      <div className="text-sm text-gray-600 italic p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-blue-600" />
+                          <span>Candidato citado. La gestión de asistencia y entrevistas corresponde al área de Selección.</span>
+                        </div>
+                      </div>
                     )}
                     
                     {candidato.estado === 'entrevistado' && (
@@ -916,6 +1070,120 @@ export default function PerfilCandidato() {
           </div>
         </div>
       </div>
+
+      {/* Modal de edición de operación y oleada para psicólogos */}
+      {editandoOperacion && user?.rol === 'seleccion' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Editar Operación y Campaña
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Operación */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Operación
+                  </label>
+                  <select
+                    value={nuevaOperacion}
+                    onChange={(e) => {
+                      setNuevaOperacion(e.target.value)
+                      setNuevaCampana('') // Reset campaña cuando cambia operación
+                    }}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Selecciona operación</option>
+                    <option value="Staff Operacional">Staff Operacional</option>
+                    <option value="Staff Administrativo">Staff Administrativo</option>
+                    <option value="Claro">Claro</option>
+                    <option value="Obamacare">Obamacare</option>
+                    <option value="Majority">Majority</option>
+                  </select>
+                </div>
+
+                {/* Campaña */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Campaña
+                  </label>
+                  <select
+                    value={nuevaCampana}
+                    onChange={(e) => setNuevaCampana(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    disabled={!nuevaOperacion}
+                  >
+                    <option value="">Selecciona campaña</option>
+                    {getCargosDisponibles().map(cargo => (
+                      <option key={cargo} value={cargo}>{cargo}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Oleada */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Oleada
+                  </label>
+                  <select
+                    value={nuevaOleada}
+                    onChange={(e) => setNuevaOleada(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    disabled={!nuevaOperacion || !nuevaCampana}
+                  >
+                    <option value="">Selecciona oleada</option>
+                    {getOleadasDisponibles().map(oleada => (
+                      <option key={oleada.id} value={oleada.id}>
+                        Oleada {oleada.numero_oleada} - {oleada.descripcion}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={actualizarOperacionCampana}
+                  disabled={!nuevaOperacion || !nuevaCampana || guardandoOperacion}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {guardandoOperacion ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Guardar Operación
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {nuevaOleada && (
+                <div className="flex space-x-3 mt-3">
+                  <button
+                    onClick={asignarOleada}
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Asignar a Oleada
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={cancelarEdicionOperacion}
+                className="w-full mt-3 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

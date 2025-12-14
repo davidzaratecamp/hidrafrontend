@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
+import RoleRedirect from './components/auth/RoleRedirect'
 import Login from './components/auth/Login'
 import Dashboard from './components/reclutador/Dashboard'
 import Estadisticas from './components/reclutador/Estadisticas'
@@ -9,6 +10,8 @@ import NuevoCandidato from './components/reclutador/NuevoCandidato'
 import EditarCandidato from './components/reclutador/EditarCandidato'
 import PerfilCandidato from './components/reclutador/PerfilCandidato'
 import CandidatosSeleccion from './components/seleccion/CandidatosSeleccion'
+import PerfilesAprobados from './components/seleccion/PerfilesAprobados'
+import PerfilesRechazados from './components/seleccion/PerfilesRechazados'
 import HojaVida from './components/candidato/HojaVida'
 import DatosBasicos from './components/candidato/DatosBasicos'
 import Estudios from './components/candidato/Estudios'
@@ -26,8 +29,8 @@ function App() {
             {/* Ruta pública de login */}
             <Route path="/login" element={<Login />} />
             
-            {/* Redirección inicial */}
-            <Route path="/" element={<Navigate to="/hydra/reclutador/dashboard" replace />} />
+            {/* Redirección inicial basada en rol */}
+            <Route path="/" element={<RoleRedirect />} />
             
             {/* Rutas protegidas para reclutadores */}
             <Route 
@@ -57,7 +60,7 @@ function App() {
             <Route 
               path="/hydra/reclutador/candidatos/nuevo" 
               element={
-                <ProtectedRoute permission="crear_candidatos">
+                <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
                   <NuevoCandidato />
                 </ProtectedRoute>
               } 
@@ -73,7 +76,7 @@ function App() {
             <Route 
               path="/hydra/reclutador/candidato/:candidatoId" 
               element={
-                <ProtectedRoute permission="ver_candidatos">
+                <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
                   <PerfilCandidato />
                 </ProtectedRoute>
               } 
@@ -85,6 +88,22 @@ function App() {
               element={
                 <ProtectedRoute roles={['seleccion', 'administrador']}>
                   <CandidatosSeleccion />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hydra/seleccion/perfiles-aprobados" 
+              element={
+                <ProtectedRoute roles={['seleccion', 'administrador']}>
+                  <PerfilesAprobados />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hydra/seleccion/perfiles-rechazados" 
+              element={
+                <ProtectedRoute roles={['seleccion', 'administrador']}>
+                  <PerfilesRechazados />
                 </ProtectedRoute>
               } 
             />

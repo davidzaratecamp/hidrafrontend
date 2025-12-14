@@ -1,0 +1,445 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { 
+  UserCheck, Eye, Calendar, Briefcase, 
+  Filter, Search, RefreshCw, BarChart3,
+  Award, Star, TrendingUp, Users,
+  Download, FileText
+} from 'lucide-react'
+import SidebarSeleccion from './SidebarSeleccion'
+import { useAuth } from '../../context/AuthContext'
+
+export default function PerfilesAprobados() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [candidatos, setCandidatos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filtros, setFiltros] = useState({
+    buscar: '',
+    operacion: '',
+    puntajeMin: '',
+    fechaDesde: '',
+    fechaHasta: ''
+  })
+  const [estadisticas, setEstadisticas] = useState({
+    total: 0,
+    promedioGeneral: 0,
+    mejorPuntaje: 0,
+    distribucionPorOperacion: []
+  })
+
+  const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  const cargarDatos = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        cargarCandidatosAprobados(),
+        cargarEstadisticas()
+      ])
+    } catch (error) {
+      console.error('Error cargando datos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cargarCandidatosAprobados = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/seleccion/candidatos-aprobados`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCandidatos(data.candidatos)
+      }
+    } catch (error) {
+      console.error('Error cargando candidatos aprobados:', error)
+    }
+  }
+
+  const cargarEstadisticas = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/seleccion/estadisticas-aprobados`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setEstadisticas(data.estadisticas)
+      }
+    } catch (error) {
+      console.error('Error cargando estadísticas:', error)
+    }
+  }
+
+  const candidatosFiltrados = candidatos.filter(candidato => {
+    const matchBuscar = !filtros.buscar || 
+      `${candidato.primer_nombre} ${candidato.primer_apellido}`.toLowerCase().includes(filtros.buscar.toLowerCase()) ||
+      candidato.email_personal?.toLowerCase().includes(filtros.buscar.toLowerCase()) ||
+      candidato.numero_celular?.includes(filtros.buscar)
+
+    const matchOperacion = !filtros.operacion || candidato.cliente === filtros.operacion
+    const matchPuntaje = !filtros.puntajeMin || candidato.evaluacion_total >= parseFloat(filtros.puntajeMin)
+    
+    const matchFecha = (!filtros.fechaDesde && !filtros.fechaHasta) || 
+      (candidato.fecha_evaluacion && 
+       new Date(candidato.fecha_evaluacion) >= (filtros.fechaDesde ? new Date(filtros.fechaDesde) : new Date('1900-01-01')) &&
+       new Date(candidato.fecha_evaluacion) <= (filtros.fechaHasta ? new Date(filtros.fechaHasta + 'T23:59:59') : new Date()))
+
+    return matchBuscar && matchOperacion && matchPuntaje && matchFecha
+  })
+
+  const getOperacionesUnicas = () => {
+    const operaciones = [...new Set(candidatos.map(c => c.cliente))]
+    return operaciones.filter(op => op)
+  }
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '-'
+    return new Date(fecha).toLocaleDateString('es-CO', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getPuntajeColor = (puntaje) => {
+    if (puntaje >= 90) return 'bg-green-100 text-green-800'
+    if (puntaje >= 85) return 'bg-blue-100 text-blue-800'
+    if (puntaje >= 80) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-gray-100 text-gray-800'
+  }
+
+  const getPuntajeIcon = (puntaje) => {
+    if (puntaje >= 90) return Star
+    if (puntaje >= 85) return Award
+    return TrendingUp
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <SidebarSeleccion />
+        <div className="flex-1 lg:ml-64 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+            <p className="text-gray-600 mt-2">Cargando perfiles aprobados...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      <SidebarSeleccion />
+      
+      <div className="flex-1 lg:ml-64">
+        <div className="p-4 lg:p-8 pt-20 lg:pt-8">
+          
+          {/* Header */}
+          <div className="mb-6 lg:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center">
+                  <UserCheck className="h-8 w-8 mr-3 text-green-600" />
+                  Perfiles Aprobados
+                </h1>
+                <p className="text-sm lg:text-base text-gray-600">
+                  Candidatos que asistieron a entrevista y aprobaron la evaluación (≥71%)
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                <button
+                  onClick={cargarDatos}
+                  className="btn-secondary flex items-center text-sm"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Actualizar
+                </button>
+              </div>
+            </div>
+
+            {/* Estadísticas */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <Users className="h-8 w-8 text-green-600" />
+                  <div className="ml-3">
+                    <p className="text-sm text-gray-600">Total Aprobados</p>
+                    <p className="text-lg font-semibold text-gray-900">{estadisticas.total}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <BarChart3 className="h-8 w-8 text-blue-600" />
+                  <div className="ml-3">
+                    <p className="text-sm text-gray-600">Promedio General</p>
+                    <p className="text-lg font-semibold text-gray-900">{estadisticas.promedioGeneral}%</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <Star className="h-8 w-8 text-yellow-600" />
+                  <div className="ml-3">
+                    <p className="text-sm text-gray-600">Mejor Puntaje</p>
+                    <p className="text-lg font-semibold text-gray-900">{estadisticas.mejorPuntaje}%</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <Award className="h-8 w-8 text-purple-600" />
+                  <div className="ml-3">
+                    <p className="text-sm text-gray-600">Excelentes (≥90%)</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {candidatos.filter(c => c.evaluacion_total >= 90).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtros */}
+          <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <Filter className="h-5 w-5 text-gray-600 mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">Filtros</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Nombre, email o teléfono..."
+                    value={filtros.buscar}
+                    onChange={(e) => setFiltros({...filtros, buscar: e.target.value})}
+                    className="pl-10 input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Operación</label>
+                <select
+                  value={filtros.operacion}
+                  onChange={(e) => setFiltros({...filtros, operacion: e.target.value})}
+                  className="input-field"
+                >
+                  <option value="">Todas las operaciones</option>
+                  {getOperacionesUnicas().map(operacion => (
+                    <option key={operacion} value={operacion}>{operacion}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Puntaje Mínimo</label>
+                <input
+                  type="number"
+                  min="71"
+                  max="100"
+                  placeholder="71-100"
+                  value={filtros.puntajeMin}
+                  onChange={(e) => setFiltros({...filtros, puntajeMin: e.target.value})}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Desde</label>
+                <input
+                  type="date"
+                  value={filtros.fechaDesde}
+                  onChange={(e) => setFiltros({...filtros, fechaDesde: e.target.value})}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Hasta</label>
+                <input
+                  type="date"
+                  value={filtros.fechaHasta}
+                  onChange={(e) => setFiltros({...filtros, fechaHasta: e.target.value})}
+                  className="input-field"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de Candidatos Aprobados */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="p-4 lg:p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Perfiles Aprobados ({candidatosFiltrados.length})
+              </h3>
+            </div>
+
+            {candidatosFiltrados.length === 0 ? (
+              <div className="p-8 text-center">
+                <UserCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No se encontraron perfiles aprobados</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Candidato
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Operación / Campaña
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Reclutador
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Puntaje Total
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Detalles Evaluación
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Oleada
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Fecha Evaluación
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {candidatosFiltrados.map((candidato) => {
+                      const PuntajeIcon = getPuntajeIcon(candidato.evaluacion_total)
+                      return (
+                        <tr key={candidato.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {candidato.primer_nombre} {candidato.primer_apellido}
+                              </p>
+                              <p className="text-xs text-gray-500">{candidato.email_personal}</p>
+                              <p className="text-xs text-gray-500">{candidato.numero_celular}</p>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{candidato.cliente}</p>
+                              <p className="text-xs text-gray-500">{candidato.cargo}</p>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {candidato.nombre_reclutador || 'No asignado'}
+                              </p>
+                              <p className="text-xs text-gray-500">Reclutador responsable</p>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <PuntajeIcon className="h-5 w-5 mr-2 text-yellow-500" />
+                              <span className={`inline-flex px-3 py-1 text-sm font-bold rounded-full ${getPuntajeColor(candidato.evaluacion_total)}`}>
+                                {candidato.evaluacion_total}%
+                              </span>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="text-xs space-y-1">
+                              <div className="flex justify-between">
+                                <span>Saludo:</span>
+                                <span className="font-medium">{candidato.evaluacion_saludo}/20</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Perfilamiento:</span>
+                                <span className="font-medium">{candidato.evaluacion_perfilamiento}/20</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Producto:</span>
+                                <span className="font-medium">{candidato.evaluacion_producto}/20</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Objeciones:</span>
+                                <span className="font-medium">{candidato.evaluacion_objeciones}/20</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Cierre:</span>
+                                <span className="font-medium">{candidato.evaluacion_cierre}/20</span>
+                              </div>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            {candidato.numero_oleada ? (
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">Oleada {candidato.numero_oleada}</p>
+                                <p className="text-xs text-gray-500">{candidato.descripcion_oleada}</p>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">Sin asignar</span>
+                            )}
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <p className="text-sm text-gray-900">
+                              {formatearFecha(candidato.fecha_evaluacion)}
+                            </p>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => navigate(`/hydra/seleccion/candidato/${candidato.id}`)}
+                                className="text-gray-600 hover:text-gray-800"
+                                title="Ver perfil completo"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

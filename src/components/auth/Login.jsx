@@ -55,12 +55,16 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log('Iniciando login con:', formData.email)
     setError('')
     setLoading(true)
 
     try {
+      console.log('Llamando función login...')
       await login(formData.email, formData.password)
+      console.log('Login exitoso!')
     } catch (error) {
+      console.error('Error en login:', error)
       setError(error.message || 'Error al iniciar sesión')
     } finally {
       setLoading(false)

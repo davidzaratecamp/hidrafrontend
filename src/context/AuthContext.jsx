@@ -1,5 +1,4 @@
 import { createContext, useContext, useReducer, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const AuthContext = createContext()
 
@@ -112,10 +111,12 @@ export function AuthProvider({ children }) {
   }
 
   const login = async (email, password) => {
+    console.log('AuthContext: Iniciando login para:', email)
     dispatch({ type: 'LOGIN_START' })
 
     try {
       const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
+      console.log('AuthContext: URL de API:', API_URL)
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -123,10 +124,14 @@ export function AuthProvider({ children }) {
         },
         body: JSON.stringify({ email, password })
       })
+      
+      console.log('AuthContext: Response status:', response.status)
 
       const data = await response.json()
+      console.log('AuthContext: Response data:', data)
 
       if (response.ok) {
+        console.log('AuthContext: Login exitoso, guardando token...')
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.usuario))
         
@@ -138,9 +143,11 @@ export function AuthProvider({ children }) {
           }
         })
 
-        // Redireccionar según el rol
-        redirectByRole(data.usuario.rol)
+        console.log('AuthContext: Redirigiendo a /')
+        // Forzar recarga para activar RoleRedirect
+        window.location.href = '/'
       } else {
+        console.log('AuthContext: Login falló:', data.error)
         throw new Error(data.error || 'Error al iniciar sesión')
       }
     } catch (error) {
@@ -157,20 +164,6 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user')
     dispatch({ type: 'LOGOUT' })
     window.location.href = '/login'
-  }
-
-  const redirectByRole = (rol) => {
-    switch (rol) {
-      case 'administrador':
-      case 'reclutador':
-        window.location.href = '/hydra/reclutador/dashboard'
-        break
-      case 'seleccion':
-        window.location.href = '/hydra/seleccion/candidatos'
-        break
-      default:
-        window.location.href = '/hydra/reclutador/dashboard'
-    }
   }
 
   const hasPermission = (permission) => {
