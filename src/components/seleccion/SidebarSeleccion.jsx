@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import { 
-  Users, 
+import {
+  Users,
   FileText,
   Building,
   LogOut,
   User,
   UserPlus,
   UserCheck,
-  UserX
+  UserX,
+  UserCog
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -31,6 +32,12 @@ export default function SidebarSeleccion() {
       path: '/hydra/seleccion/perfiles-rechazados',
       icon: UserX,
       label: 'Perfiles Rechazados',
+      permission: 'ver_candidatos'
+    },
+    {
+      path: '/hydra/seleccion/usuarios',
+      icon: UserCog,
+      label: 'Gestión de Usuarios',
       permission: 'ver_candidatos'
     },
     {

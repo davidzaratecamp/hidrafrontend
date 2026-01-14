@@ -12,6 +12,7 @@ import PerfilCandidato from './components/reclutador/PerfilCandidato'
 import CandidatosSeleccion from './components/seleccion/CandidatosSeleccion'
 import PerfilesAprobados from './components/seleccion/PerfilesAprobados'
 import PerfilesRechazados from './components/seleccion/PerfilesRechazados'
+import GestionUsuarios from './components/seleccion/GestionUsuarios'
 import HojaVida from './components/candidato/HojaVida'
 import DatosBasicos from './components/candidato/DatosBasicos'
 import Estudios from './components/candidato/Estudios'
@@ -107,15 +108,23 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/hydra/seleccion/candidato/:candidatoId" 
+            <Route
+              path="/hydra/seleccion/candidato/:candidatoId"
               element={
                 <ProtectedRoute roles={['seleccion', 'administrador']}>
                   <PerfilCandidato />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
+            <Route
+              path="/hydra/seleccion/usuarios"
+              element={
+                <ProtectedRoute roles={['seleccion', 'administrador']}>
+                  <GestionUsuarios />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Rutas protegidas para administrador */}
             <Route 
               path="/hydra/admin/reclutadores" 

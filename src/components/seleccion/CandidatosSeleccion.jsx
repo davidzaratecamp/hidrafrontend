@@ -137,7 +137,7 @@ export default function CandidatosSeleccion() {
     }
   }
 
-  const asignarOleada = async (candidatoId, oleadaId) => {
+  const asignarOleada = async (candidatoId, numeroOleada) => {
     try {
       const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/seleccion/candidatos/${candidatoId}/oleada`, {
@@ -146,7 +146,7 @@ export default function CandidatosSeleccion() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ oleadaId })
+        body: JSON.stringify({ numeroOleada })
       })
 
       if (response.ok) {
@@ -692,7 +692,6 @@ export default function CandidatosSeleccion() {
       {showOleadaModal && selectedCandidato && (
         <OleadaModal
           candidato={selectedCandidato}
-          oleadas={oleadas}
           onClose={() => {
             setShowOleadaModal(false)
             setSelectedCandidato(null)
@@ -788,20 +787,13 @@ function AsistenciaModal({ candidato, onClose, onMarcarAsistencia }) {
 }
 
 // Modal para asignar oleada
-function OleadaModal({ candidato, oleadas, onClose, onAsignarOleada }) {
-  const [oleadaSeleccionada, setOleadaSeleccionada] = useState('')
-
-  console.log('OleadaModal - Candidato:', candidato)
-  console.log('OleadaModal - Todas las oleadas:', oleadas)
-  
-  // Los psicólogos pueden asignar cualquier oleada a cualquier candidato
-  const oleadasFiltradas = oleadas
-  
-  console.log('OleadaModal - Oleadas disponibles:', oleadasFiltradas)
+function OleadaModal({ candidato, onClose, onAsignarOleada }) {
+  const [numeroOleada, setNumeroOleada] = useState('')
 
   const handleAsignar = () => {
-    if (oleadaSeleccionada) {
-      onAsignarOleada(candidato.id, parseInt(oleadaSeleccionada))
+    const numero = parseInt(numeroOleada)
+    if (numero && numero > 0) {
+      onAsignarOleada(candidato.id, numero)
     }
   }
 
@@ -812,7 +804,7 @@ function OleadaModal({ candidato, oleadas, onClose, onAsignarOleada }) {
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Asignar Oleada - {candidato.primer_nombre} {candidato.primer_apellido}
           </h3>
-          
+
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-2">
               <strong>Operación:</strong> {candidato.cliente}
@@ -820,42 +812,24 @@ function OleadaModal({ candidato, oleadas, onClose, onAsignarOleada }) {
             <p className="text-sm text-gray-600 mb-4">
               <strong>Campaña:</strong> {candidato.cargo}
             </p>
-            
-            {oleadasFiltradas.length > 0 ? (
-              <>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Seleccionar Oleada
-                </label>
-                <select
-                  value={oleadaSeleccionada}
-                  onChange={(e) => setOleadaSeleccionada(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">Selecciona una oleada</option>
-                  {oleadasFiltradas.map(oleada => (
-                    <option key={oleada.id} value={oleada.id}>
-                      Oleada {oleada.numero_oleada} - {oleada.descripcion}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>No hay oleadas disponibles</strong>
-                </p>
-                <p className="text-xs text-yellow-700 mt-1">
-                  No existen oleadas activas para la operación "{candidato.cliente}" y campaña "{candidato.cargo}". 
-                  Contacte al administrador para crear las oleadas necesarias.
-                </p>
-              </div>
-            )}
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Número de Oleada
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={numeroOleada}
+              onChange={(e) => setNumeroOleada(e.target.value)}
+              placeholder="Ej: 1, 2, 3..."
+              className="input-field"
+            />
           </div>
 
           <div className="flex space-x-3">
             <button
               onClick={handleAsignar}
-              disabled={!oleadaSeleccionada || oleadasFiltradas.length === 0}
+              disabled={!numeroOleada || parseInt(numeroOleada) < 1}
               className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               Asignar
