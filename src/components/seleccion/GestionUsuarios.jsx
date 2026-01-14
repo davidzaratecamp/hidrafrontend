@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Plus, UserMinus, AlertTriangle, Users, Mail, Calendar, Shield } from 'lucide-react';
 import SidebarSeleccion from './SidebarSeleccion';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
 const GestionUsuarios = () => {
+  const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
+
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
