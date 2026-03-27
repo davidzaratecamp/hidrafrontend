@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  UserPlus, 
-  Users, 
+import {
+  LayoutDashboard,
+  UserPlus,
+  Users,
+  UsersRound,
   BarChart3,
   Building,
   LogOut,
@@ -35,6 +36,12 @@ export default function Sidebar() {
       path: '/hydra/reclutador/candidatos',
       icon: Users,
       label: 'Candidatos',
+      permission: 'ver_candidatos'
+    },
+    {
+      path: '/hydra/reclutador/candidatos-total',
+      icon: UsersRound,
+      label: 'CandidatosT',
       permission: 'ver_candidatos'
     },
     {

@@ -6,6 +6,7 @@ import Login from './components/auth/Login'
 import Dashboard from './components/reclutador/Dashboard'
 import Estadisticas from './components/reclutador/Estadisticas'
 import ListaCandidatos from './components/reclutador/ListaCandidatos'
+import CandidatosTotal from './components/reclutador/CandidatosTotal'
 import NuevoCandidato from './components/reclutador/NuevoCandidato'
 import EditarCandidato from './components/reclutador/EditarCandidato'
 import PerfilCandidato from './components/reclutador/PerfilCandidato'
@@ -58,7 +59,15 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
+            <Route
+              path="/hydra/reclutador/candidatos-total"
+              element={
+                <ProtectedRoute permission="ver_candidatos">
+                  <CandidatosTotal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/hydra/reclutador/candidatos/nuevo" 
               element={
                 <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
