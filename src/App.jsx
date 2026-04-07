@@ -21,6 +21,7 @@ import Experiencia from './components/candidato/Experiencia'
 import Personal from './components/candidato/Personal'
 import Consentimiento from './components/candidato/Consentimiento'
 import GestionReclutadores from './components/admin/GestionReclutadores'
+import DesprendiblesPage from './components/desprendibles/DesprendiblesPage'
 
 function App() {
   return (
@@ -135,13 +136,23 @@ function App() {
             />
 
             {/* Rutas protegidas para administrador */}
-            <Route 
-              path="/hydra/admin/reclutadores" 
+            <Route
+              path="/hydra/admin/reclutadores"
               element={
                 <ProtectedRoute roles={['administrador']}>
                   <GestionReclutadores />
                 </ProtectedRoute>
-              } 
+              }
+            />
+
+            {/* Desprendibles — accesible para todos los roles */}
+            <Route
+              path="/hydra/desprendibles"
+              element={
+                <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
+                  <DesprendiblesPage />
+                </ProtectedRoute>
+              }
             />
             
             {/* Rutas públicas para candidatos (con token) */}

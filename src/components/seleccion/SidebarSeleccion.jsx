@@ -8,7 +8,8 @@ import {
   UserPlus,
   UserCheck,
   UserX,
-  UserCog
+  UserCog,
+  Receipt
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -39,6 +40,12 @@ export default function SidebarSeleccion() {
       icon: UserCog,
       label: 'Gestión de Usuarios',
       permission: 'ver_candidatos'
+    },
+    {
+      path: '/hydra/desprendibles',
+      icon: Receipt,
+      label: 'Desprendibles',
+      permission: 'ver_dashboard'
     },
     {
       path: '/hydra/reclutador/dashboard',

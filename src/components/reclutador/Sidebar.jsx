@@ -11,7 +11,8 @@ import {
   User,
   Menu,
   X,
-  Settings
+  Settings,
+  FileText
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -49,6 +50,11 @@ export default function Sidebar() {
       icon: BarChart3,
       label: 'Estadísticas',
       permission: 'ver_estadisticas'
+    },
+    {
+      path: '/hydra/desprendibles',
+      icon: FileText,
+      label: 'Desprendibles'
     },
     {
       path: '/hydra/admin/reclutadores',

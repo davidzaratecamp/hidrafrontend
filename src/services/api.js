@@ -200,6 +200,28 @@ class ApiService {
     }
   }
 
+  async getMesesDesprendibles() {
+    return this.get('/desprendibles/meses');
+  }
+
+  async getPdfDesprendible(year, month) {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/desprendibles/pdf/${year}/${month}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await response.json();
+      throw new Error(data.message ?? `Error: ${response.status}`);
+    }
+    return response.blob();
+  }
+
   async getReclutadores() {
     return this.get('/auth/admin/reclutadores');
   }

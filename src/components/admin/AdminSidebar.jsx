@@ -1,4 +1,4 @@
-import { Users, Settings, LogOut } from 'lucide-react';
+import { Users, Settings, LogOut, FileText } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,6 +17,11 @@ const AdminSidebar = () => {
       name: 'Gestión de Reclutadores',
       href: '/hydra/admin/reclutadores',
       icon: Users
+    },
+    {
+      name: 'Desprendibles',
+      href: '/hydra/desprendibles',
+      icon: FileText
     }
   ];
 
