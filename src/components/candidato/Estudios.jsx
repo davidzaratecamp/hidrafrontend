@@ -64,7 +64,7 @@ export default function Estudios() {
       navigate(`/candidato/experiencia/${token}`)
     } catch (error) {
       console.error('Error guardando:', error)
-      alert('Error al guardar los datos')
+      alert(error.message || 'Error al guardar los datos')
     } finally {
       setSaving(false)
     }

@@ -101,7 +101,6 @@ export default function Dashboard() {
     { estado: 'reagendar', label: 'Reagendar', color: 'bg-yellow-100 text-yellow-800', count: resumenEstados.reagendar || 0 },
     { estado: 'no_interesado', label: 'No Interesado', color: 'bg-red-100 text-red-800', count: resumenEstados.no_interesado || 0 },
     { estado: 'numero_incorrecto', label: 'Número Incorrecto', color: 'bg-red-100 text-red-800', count: resumenEstados.numero_incorrecto || 0 },
-    { estado: 'contacto_exitoso', label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800', count: resumenEstados.contacto_exitoso || 0 },
     { estado: 'formularios_enviados', label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800', count: resumenEstados.formularios_enviados || 0 },
     { estado: 'formularios_completados', label: 'Formularios Completados', color: 'bg-green-100 text-green-800', count: resumenEstados.formularios_completados || 0 },
     { estado: 'citado', label: 'Citados', color: 'bg-purple-100 text-purple-800', count: resumenEstados.citado || 0 },

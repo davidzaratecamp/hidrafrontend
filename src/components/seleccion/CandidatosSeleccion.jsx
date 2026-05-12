@@ -372,7 +372,7 @@ export default function CandidatosSeleccion() {
                     <CheckCircle className="h-8 w-8 text-emerald-600" />
                     <div className="ml-3">
                       <p className="text-sm text-gray-600">Aprobados</p>
-                      <p className="text-lg font-semibold text-gray-900">{estadisticas.aprobados}</p>
+                      <p className="text-lg font-semibold text-gray-900">{estadisticas.aprobados_finales}</p>
                     </div>
                   </div>
                 </div>

@@ -176,18 +176,6 @@ export default function ListaCandidatos() {
       )
     }
 
-    if (candidato.estado === 'contacto_exitoso') {
-      return (
-        <button
-          onClick={() => handleCambiarEstado(candidato.id, candidato, 'citado', 'Marcar como Citado')}
-          className="flex items-center px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
-        >
-          <Calendar className="h-4 w-4 mr-1" />
-          Citar
-        </button>
-      )
-    }
-
     if (candidato.estado === 'citado') {
       return (
         <button

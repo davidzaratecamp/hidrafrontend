@@ -980,7 +980,6 @@ export default function PerfilCandidato() {
                   </div>
 
                   {/* Botones de acción según el estado */}
-                  {/* DEBUG: candidato.estado = */}{candidato.estado}{/* END DEBUG */}
                   <div className="flex flex-wrap gap-2">
                     {candidato.estado === 'nuevo' && (
                       <button

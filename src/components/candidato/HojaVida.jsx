@@ -53,7 +53,7 @@ export default function HojaVida() {
       navigate(`/candidato/datos-basicos/${token}`)
     } catch (error) {
       console.error('Error guardando:', error)
-      alert('Error al guardar los datos')
+      alert(error.message || 'Error al guardar los datos')
     } finally {
       setSaving(false)
     }

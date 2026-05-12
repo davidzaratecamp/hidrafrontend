@@ -75,7 +75,7 @@ class ApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem('token');
@@ -83,9 +83,10 @@ class ApiService {
           window.location.href = '/login';
           return;
         }
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('PUT Error:', error);

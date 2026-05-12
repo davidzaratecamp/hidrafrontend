@@ -43,7 +43,9 @@ export default function Experiencia() {
       setFormData({
         nombre_empresa: candidatoInfo.nombre_empresa || '',
         cargo_desempenado: candidatoInfo.cargo_desempenado || '',
-        salario_experiencia: candidatoInfo.salario_experiencia || '',
+        salario_experiencia: candidatoInfo.salario_experiencia
+          ? String(Math.round(parseFloat(candidatoInfo.salario_experiencia)))
+          : '',
         fecha_inicio_experiencia: candidatoInfo.fecha_inicio_experiencia || '',
         fecha_retiro_experiencia: candidatoInfo.fecha_retiro_experiencia || '',
         tiempo_laborado_anos: candidatoInfo.tiempo_laborado_anos || 0,
@@ -134,7 +136,7 @@ export default function Experiencia() {
       navigate(`/candidato/personal/${token}`)
     } catch (error) {
       console.error('Error guardando:', error)
-      alert('Error al guardar los datos')
+      alert(error.message || 'Error al guardar los datos')
     } finally {
       setSaving(false)
     }
