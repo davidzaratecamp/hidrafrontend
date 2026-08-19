@@ -33,9 +33,10 @@ class ApiService {
           window.location.href = '/login';
           return;
         }
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('GET Error:', error);
@@ -50,7 +51,7 @@ class ApiService {
         headers: this.getAuthHeaders(),
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem('token');
@@ -58,9 +59,10 @@ class ApiService {
           window.location.href = '/login';
           return;
         }
-        throw new Error(`Error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('POST Error:', error);
@@ -98,8 +100,10 @@ class ApiService {
     return this.get(`/candidato/token/${token}`);
   }
 
-  async getCandidatosPorEstado(estado) {
-    return this.get(`/candidato/por-estado/${estado}`);
+  async getCandidatosPorEstado(estado, page = 1, search = '') {
+    const params = new URLSearchParams({ page });
+    if (search) params.set('search', search);
+    return this.get(`/candidato/por-estado/${estado}?${params.toString()}`);
   }
 
   async getResumenEstados() {

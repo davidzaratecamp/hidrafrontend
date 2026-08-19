@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft, User, Building, MapPin, Phone, Mail, MessageSquare } from 'lucide-react'
+import { Save, ArrowLeft, User, Building, Phone, Mail, MessageSquare } from 'lucide-react'
 import Sidebar from './Sidebar'
 import ApiService from '../../services/api'
 
@@ -13,22 +13,17 @@ export default function EditarCandidato() {
   const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
     // Datos principales
-    nacionalidad: '',
     tipo_documento: '',
     numero_documento: '',
-    primer_apellido: '',
-    primer_nombre: '',
+    nombre_completo: '',
     email_personal: '',
     numero_celular: '',
     
     // Datos del proceso
     cliente: '',
     oleada: '',
-    ciudad: '',
     cargo: '',
     fuente_reclutamiento: '',
-    fecha_citacion_entrevista: '',
-    hora_citacion_entrevista: '',
     observaciones_llamada: '',
     observaciones_generales: ''
   })
@@ -47,36 +42,26 @@ export default function EditarCandidato() {
       const candidatoInfo = candidatoData.candidato
       setCandidato(candidatoInfo)
       setCatalogos(catalogosData)
-      
-      // Formatear la fecha y hora para los inputs
-      const formatearFechaHora = (fechaHora) => {
-        if (!fechaHora) return { fecha: '', hora: '' };
-        const fechaObj = new Date(fechaHora);
-        if (isNaN(fechaObj.getTime())) return { fecha: '', hora: '' };
-        
-        const fecha = fechaObj.toISOString().split('T')[0];
-        const hora = fechaObj.toTimeString().slice(0, 5); // HH:MM formato
-        
-        return { fecha, hora };
-      };
 
-      const { fecha: fechaCita, hora: horaCita } = formatearFechaHora(candidatoInfo.fecha_citacion_entrevista);
+      // Recompone "Nombre Completo" a partir de los 4 campos guardados en BD
+      // (primer/segundo nombre, primer/segundo apellido), en el orden en que se muestran normalmente.
+      const nombreCompleto = [
+        candidatoInfo.primer_nombre,
+        candidatoInfo.segundo_nombre,
+        candidatoInfo.primer_apellido,
+        candidatoInfo.segundo_apellido
+      ].filter(Boolean).join(' ')
 
       const formDataResult = {
-        nacionalidad: candidatoInfo.nacionalidad || '',
         tipo_documento: candidatoInfo.tipo_documento || '',
         numero_documento: candidatoInfo.numero_documento || '',
-        primer_apellido: candidatoInfo.primer_apellido || '',
-        primer_nombre: candidatoInfo.primer_nombre || '',
+        nombre_completo: nombreCompleto,
         email_personal: candidatoInfo.email_personal || '',
         numero_celular: candidatoInfo.numero_celular || '',
         cliente: candidatoInfo.cliente || '',
         oleada: candidatoInfo.oleada || '',
-        ciudad: candidatoInfo.ciudad || '',
         cargo: candidatoInfo.cargo || '',
         fuente_reclutamiento: candidatoInfo.fuente_reclutamiento || '',
-        fecha_citacion_entrevista: fechaCita,
-        hora_citacion_entrevista: horaCita,
         observaciones_llamada: candidatoInfo.observaciones_llamada || '',
         observaciones_generales: candidatoInfo.observaciones_generales || ''
       };
@@ -88,15 +73,6 @@ export default function EditarCandidato() {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Lógica condicional para tipo de documento
-  const handleNacionalidadChange = (nacionalidad) => {
-    setFormData({
-      ...formData,
-      nacionalidad,
-      tipo_documento: nacionalidad === 'Colombiano' ? 'CC' : ''
-    })
   }
 
   // Lógica condicional para mostrar/ocultar oleada
@@ -124,6 +100,14 @@ export default function EditarCandidato() {
       case 'Majority':
         cargos = catalogos.cargos_majority || []
         break
+      case 'Hogar':
+      case 'Móvil':
+      case 'TyT':
+      case 'Pymes':
+      case 'ACA':
+      case 'Customer':
+        cargos = catalogos.cargos_campanas || []
+        break
       default:
         cargos = []
     }
@@ -140,14 +124,20 @@ export default function EditarCandidato() {
     e.preventDefault()
     
     // Validar campos requeridos
-    const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
-                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento', 'observaciones_llamada']
-    
+    const requiredFields = ['tipo_documento', 'nombre_completo',
+                           'numero_celular', 'cliente', 'cargo', 'fuente_reclutamiento', 'observaciones_llamada']
+
     for (const field of requiredFields) {
       if (!formData[field]) {
         alert(`Por favor completa el campo: ${field.replace(/_/g, ' ')}`)
         return
       }
+    }
+
+    // Nombre completo debe tener al menos nombre y apellido
+    if (formData.nombre_completo.trim().split(/\s+/).length < 2) {
+      alert('Escribe el nombre completo del candidato (nombre y apellido, mínimo)')
+      return
     }
 
     // Validar oleada si es requerida
@@ -158,42 +148,31 @@ export default function EditarCandidato() {
     
     try {
       setSaving(true)
-      
-      // Combinar fecha y hora para enviar al backend
+
       const dataToSend = { ...formData };
-      if (formData.fecha_citacion_entrevista && formData.hora_citacion_entrevista) {
-        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T${formData.hora_citacion_entrevista}:00`;
-      } else if (formData.fecha_citacion_entrevista) {
-        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T00:00:00`;
-      } else {
-        dataToSend.fecha_citacion_entrevista = null;
-      }
-      
+
       // Mapear observaciones de llamada al estado del sistema
       const estadoMap = {
         'Contacto exitoso': 'contacto_exitoso',
-        'Contacto fallido': 'contacto_fallido', 
+        'Contacto fallido': 'contacto_fallido',
         'No contesta': 'no_contesta',
         'Reagendar': 'reagendar',
         'No interesado': 'no_interesado',
         'Numero incorrecto': 'numero_incorrecto',
         'No apto': 'contacto_fallido'
       };
-      
+
       // Solo actualizar el estado si se ha seleccionado una observación de llamada
       if (formData.observaciones_llamada && estadoMap[formData.observaciones_llamada]) {
         dataToSend.estado = estadoMap[formData.observaciones_llamada];
       }
-      
-      // Remover el campo de hora separado antes de enviar
-      delete dataToSend.hora_citacion_entrevista;
-      
+
       await ApiService.editarCandidato(candidatoId, dataToSend)
       alert('Candidato actualizado exitosamente')
       navigate('/hydra/reclutador/candidatos')
     } catch (error) {
       console.error('Error actualizando candidato:', error)
-      alert('Error al actualizar el candidato. Verifica los datos e intenta nuevamente.')
+      alert(error.message || 'Error al actualizar el candidato. Verifica los datos e intenta nuevamente.')
     } finally {
       setSaving(false)
     }
@@ -272,72 +251,40 @@ export default function EditarCandidato() {
                 </h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Nacionalidad */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nacionalidad *
-                    </label>
-                    <select
-                      value={formData.nacionalidad}
-                      onChange={(e) => handleNacionalidadChange(e.target.value)}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona nacionalidad</option>
-                      {catalogos.nacionalidades?.length > 0 ? (
-                        catalogos.nacionalidades.map((nac) => (
-                          <option key={nac.value} value={nac.value}>
-                            {nac.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="Colombiano">Colombiano</option>
-                          <option value="Venezolano">Venezolano</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                  
                   {/* Tipo de Documento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tipo de Documento *
                     </label>
-                    {formData.nacionalidad === 'Colombiano' ? (
-                      <input
-                        type="text"
-                        value="CC"
-                        disabled
-                        className="input-field bg-gray-100 cursor-not-allowed"
-                      />
-                    ) : (
-                      <select
-                        value={formData.tipo_documento}
-                        onChange={(e) => setFormData({...formData, tipo_documento: e.target.value})}
-                        required
-                        className="input-field"
-                        disabled={!formData.nacionalidad || formData.nacionalidad === 'Colombiano'}
-                      >
-                        <option value="">Selecciona tipo</option>
-                        {catalogos.tipos_documento_extranjero?.length > 0 ? (
-                          catalogos.tipos_documento_extranjero.map((tipo) => (
-                            <option key={tipo.value} value={tipo.value}>
-                              {tipo.label}
-                            </option>
-                          ))
-                        ) : (
-                          <>
-                            <option value="Pasaporte">Pasaporte</option>
-                            <option value="CE">CE (Cédula de Extranjería)</option>
-                            <option value="DNI">DNI</option>
-                            <option value="Otro">Otro</option>
-                          </>
+                    <select
+                      value={formData.tipo_documento}
+                      onChange={(e) => setFormData({...formData, tipo_documento: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona tipo</option>
+                      {/* El candidato puede tener un tipo de documento histórico (Pasaporte/CE/DNI/Otro)
+                          que ya no está en el catálogo vigente (solo CC/PPT) — se muestra igual para no
+                          perder el valor guardado al editar. */}
+                      {candidato?.tipo_documento &&
+                        !catalogos.tipos_documento?.some(t => t.value === candidato.tipo_documento) && (
+                          <option value={candidato.tipo_documento}>{candidato.tipo_documento} (histórico)</option>
                         )}
-                      </select>
-                    )}
+                      {catalogos.tipos_documento?.length > 0 ? (
+                        catalogos.tipos_documento.map((tipo) => (
+                          <option key={tipo.value} value={tipo.value}>
+                            {tipo.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="CC">CC</option>
+                          <option value="PPT">PPT</option>
+                        </>
+                      )}
+                    </select>
                   </div>
-                  
+
                   {/* Número de Documento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -357,36 +304,24 @@ export default function EditarCandidato() {
                     />
                   </div>
                   
-                  {/* Primer Apellido */}
-                  <div>
+                  {/* Nombre Completo */}
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primer Apellido *
+                      Nombre Completo *
                     </label>
                     <input
                       type="text"
-                      value={formData.primer_apellido}
-                      onChange={(e) => setFormData({...formData, primer_apellido: e.target.value})}
+                      value={formData.nombre_completo}
+                      onChange={(e) => setFormData({...formData, nombre_completo: e.target.value})}
                       required
                       className="input-field"
-                      placeholder="Apellido del candidato"
+                      placeholder="Nombres y apellidos del candidato"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Mínimo nombre y apellido. El sistema separa nombre(s)/apellido(s) automáticamente.
+                    </p>
                   </div>
-                  
-                  {/* Primer Nombre */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primer Nombre *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.primer_nombre}
-                      onChange={(e) => setFormData({...formData, primer_nombre: e.target.value})}
-                      required
-                      className="input-field"
-                      placeholder="Nombre del candidato"
-                    />
-                  </div>
-                  
+
                   {/* Email Personal */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -488,33 +423,6 @@ export default function EditarCandidato() {
                     </div>
                   )}
                   
-                  {/* Ciudad */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      Ciudad que Aplica *
-                    </label>
-                    <select
-                      value={formData.ciudad}
-                      onChange={(e) => setFormData({...formData, ciudad: e.target.value})}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona ciudad</option>
-                      {catalogos.ciudades?.length > 0 ? (
-                        catalogos.ciudades.map((ciudad) => (
-                          <option key={ciudad.value} value={ciudad.value}>
-                            {ciudad.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="Bogotá">Bogotá</option>
-                          <option value="Barranquilla">Barranquilla</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
                   
                   {/* Cargo */}
                   <div className="sm:col-span-2">
@@ -575,32 +483,6 @@ export default function EditarCandidato() {
                         </>
                       )}
                     </select>
-                  </div>
-                  
-                  {/* Fecha de Citación a Entrevista */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha de Citación a Entrevista
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.fecha_citacion_entrevista}
-                      onChange={(e) => setFormData({...formData, fecha_citacion_entrevista: e.target.value})}
-                      className="input-field"
-                    />
-                  </div>
-                  
-                  {/* Hora de Citación a Entrevista */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Hora de Citación a Entrevista
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.hora_citacion_entrevista}
-                      onChange={(e) => setFormData({...formData, hora_citacion_entrevista: e.target.value})}
-                      className="input-field"
-                    />
                   </div>
                 </div>
               </div>

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { User, Heart, MapPin, Phone, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
+import { User, Phone, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
 import ApiService from '../../services/api'
+
+// Excel: "FORMATO HOJA DE VIDA" no trae catálogo de tallas - lista estándar local.
+const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 
 export default function DatosBasicos() {
   const { token } = useParams()
@@ -9,10 +12,15 @@ export default function DatosBasicos() {
   const [candidato, setCandidato] = useState(null)
   const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
-    segundo_apellido: '',
-    segundo_nombre: '',
-    genero: '',
-    fecha_nacimiento: '',
+    nombre_completo: '',
+    tipo_documento: '',
+    numero_documento: '',
+    numero_celular: '',
+    edad: '',
+    estado_civil: '',
+    direccion_residencial: '',
+    barrio: '',
+    talla_camisa: '',
     grupo_sanguineo: '',
     eps: '',
     afp: '',
@@ -33,16 +41,28 @@ export default function DatosBasicos() {
         ApiService.validarToken(token),
         ApiService.getCatalogos()
       ])
-      
+
       setCandidato(candidatoData.candidato)
       setCatalogos(catalogosData)
-      
+
       const candidatoInfo = candidatoData.candidato
+      // Nombres Completos se recompone desde los 4 campos guardados (mismo patrón que
+      // EditarCandidato.jsx en la intranet) para que el candidato lo vea y pueda
+      // corregirlo si el reclutador lo puso mal.
+      const nombreCompuesto = [
+        candidatoInfo.primer_nombre, candidatoInfo.segundo_nombre,
+        candidatoInfo.primer_apellido, candidatoInfo.segundo_apellido
+      ].filter(Boolean).join(' ')
       setFormData({
-        segundo_apellido: candidatoInfo.segundo_apellido || '',
-        segundo_nombre: candidatoInfo.segundo_nombre || '',
-        genero: candidatoInfo.genero || '',
-        fecha_nacimiento: candidatoInfo.fecha_nacimiento || '',
+        nombre_completo: nombreCompuesto,
+        tipo_documento: candidatoInfo.tipo_documento || '',
+        numero_documento: candidatoInfo.numero_documento || '',
+        numero_celular: candidatoInfo.numero_celular || '',
+        edad: candidatoInfo.edad ?? '',
+        estado_civil: candidatoInfo.estado_civil || '',
+        direccion_residencial: candidatoInfo.direccion_residencial || '',
+        barrio: candidatoInfo.barrio || '',
+        talla_camisa: candidatoInfo.talla_camisa || '',
         grupo_sanguineo: candidatoInfo.grupo_sanguineo || '',
         eps: candidatoInfo.eps || '',
         afp: candidatoInfo.afp || '',
@@ -60,17 +80,21 @@ export default function DatosBasicos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    const requiredFields = ['genero', 'fecha_nacimiento', 'grupo_sanguineo', 'eps', 'afp', 
-                           'nombre_emergencia', 'numero_emergencia', 'parentesco_emergencia']
-    
+
+    const requiredFields = [
+      'nombre_completo', 'tipo_documento', 'numero_documento', 'numero_celular', 'edad',
+      'estado_civil', 'direccion_residencial', 'barrio', 'talla_camisa',
+      'grupo_sanguineo', 'eps', 'afp',
+      'nombre_emergencia', 'numero_emergencia', 'parentesco_emergencia'
+    ]
+
     for (const field of requiredFields) {
       if (!formData[field]) {
         alert(`Por favor completa el campo: ${field.replace(/_/g, ' ')}`)
         return
       }
     }
-    
+
     try {
       setSaving(true)
       await ApiService.actualizarDatosBasicos(token, formData)
@@ -94,6 +118,13 @@ export default function DatosBasicos() {
     )
   }
 
+  // Nacionalidad no se pide suelta: se deriva en vivo de tipo_documento (mismo criterio
+  // que el backend en actualizarDatosBasicos y en crearCandidato/editarCandidato de la
+  // intranet: CC -> Colombiano, PPT -> Venezolano).
+  const nacionalidadDerivada = formData.tipo_documento === 'CC' ? 'Colombiano'
+    : formData.tipo_documento === 'PPT' ? 'Venezolano'
+    : ''
+
   if (!candidato) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -116,7 +147,7 @@ export default function DatosBasicos() {
               </div>
               <User className="h-8 w-8 sm:h-12 sm:w-12 text-green-200" />
             </div>
-            
+
             <div className="mt-6 bg-green-700 bg-opacity-50 rounded-lg p-4">
               <div className="flex justify-between items-center text-sm">
                 <span>Progreso del formulario</span>
@@ -133,99 +164,122 @@ export default function DatosBasicos() {
 
           <div className="p-4 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+              {/* Excel: bloque "DATOS PERSONALES" (filas 12-16). Nombres Completos, N° de
+                  Documento, Nacionalidad, Celular, Correo Electrónico y Edad ya los
+                  registró el reclutador en "Nuevo Candidato" - se muestran de solo
+                  lectura para que el candidato confirme sus datos. Género y Fecha de
+                  Nacimiento no están en el Excel oficial, pero se mantienen porque el
+                  sistema ya los captura y usa (decisión del usuario, 2026-08-18). */}
               <div className="bg-blue-50 rounded-lg p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <User className="h-5 w-5 mr-2 text-blue-600" />
-                  Información Personal
+                  Datos Personales
                 </h2>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Segundo Apellido
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.segundo_apellido}
-                      onChange={(e) => setFormData({...formData, segundo_apellido: e.target.value})}
-                      className="input-field"
-                      placeholder="Opcional"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Segundo Nombre
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.segundo_nombre}
-                      onChange={(e) => setFormData({...formData, segundo_nombre: e.target.value})}
-                      className="input-field"
-                      placeholder="Opcional"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Género *
-                    </label>
-                    <select
-                      value={formData.genero}
-                      onChange={(e) => setFormData({...formData, genero: e.target.value})}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona tu género</option>
-                      {catalogos.generos?.map((genero) => (
-                        <option key={genero.value} value={genero.value}>
-                          {genero.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha de Nacimiento *
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.fecha_nacimiento}
-                      onChange={(e) => setFormData({...formData, fecha_nacimiento: e.target.value})}
-                      required
-                      className="input-field"
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-red-50 rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <Heart className="h-5 w-5 mr-2 text-red-600" />
-                  Información Médica
-                </h2>
-                
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombres Completos *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nombre_completo}
+                      onChange={(e) => setFormData({...formData, nombre_completo: e.target.value})}
+                      required
+                      className="input-field"
+                      placeholder="Nombre y apellidos completos"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Grupo Sanguíneo *
+                      Tipo de Documento *
                     </label>
                     <select
-                      value={formData.grupo_sanguineo}
-                      onChange={(e) => setFormData({...formData, grupo_sanguineo: e.target.value})}
+                      value={formData.tipo_documento}
+                      onChange={(e) => setFormData({...formData, tipo_documento: e.target.value})}
                       required
                       className="input-field"
                     >
                       <option value="">Selecciona</option>
-                      {catalogos.grupos_sanguineos?.map((grupo) => (
-                        <option key={grupo} value={grupo}>
-                          {grupo}
+                      {catalogos.tipos_documento?.map((tipo) => (
+                        <option key={tipo.value} value={tipo.value}>
+                          {tipo.label}
                         </option>
                       ))}
                     </select>
                   </div>
-                  
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      N° de Documento *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.numero_documento}
+                      onChange={(e) => setFormData({...formData, numero_documento: e.target.value})}
+                      required
+                      className="input-field"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nacionalidad
+                    </label>
+                    <input
+                      type="text"
+                      value={nacionalidadDerivada}
+                      readOnly
+                      disabled
+                      className="input-field bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Se calcula según el tipo de documento.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Celular *
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.numero_celular}
+                      onChange={(e) => setFormData({...formData, numero_celular: e.target.value})}
+                      required
+                      className="input-field"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Correo Electrónico
+                    </label>
+                    <input
+                      type="text"
+                      value={candidato.email_personal || ''}
+                      readOnly
+                      disabled
+                      className="input-field bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Es el correo al que te llegó este link, no se puede cambiar aquí.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Edad *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.edad}
+                      onChange={(e) => setFormData({...formData, edad: e.target.value})}
+                      required
+                      className="input-field"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       EPS *
@@ -244,10 +298,10 @@ export default function DatosBasicos() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      AFP *
+                      Fondo de Pensión *
                     </label>
                     <select
                       value={formData.afp}
@@ -255,7 +309,7 @@ export default function DatosBasicos() {
                       required
                       className="input-field"
                     >
-                      <option value="">Selecciona tu AFP</option>
+                      <option value="">Selecciona tu fondo de pensión</option>
                       {catalogos.afp_opciones?.map((afp) => (
                         <option key={afp} value={afp}>
                           {afp}
@@ -263,45 +317,101 @@ export default function DatosBasicos() {
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      RH *
+                    </label>
+                    <select
+                      value={formData.grupo_sanguineo}
+                      onChange={(e) => setFormData({...formData, grupo_sanguineo: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {catalogos.grupos_sanguineos?.map((grupo) => (
+                        <option key={grupo} value={grupo}>
+                          {grupo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Dirección Residencial *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.direccion_residencial}
+                      onChange={(e) => setFormData({...formData, direccion_residencial: e.target.value})}
+                      required
+                      className="input-field"
+                      placeholder="Dirección completa"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Barrio *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.barrio}
+                      onChange={(e) => setFormData({...formData, barrio: e.target.value})}
+                      required
+                      className="input-field"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estado Civil *
+                    </label>
+                    <select
+                      value={formData.estado_civil}
+                      onChange={(e) => setFormData({...formData, estado_civil: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona tu estado civil</option>
+                      {catalogos.estados_civiles?.map((estado) => (
+                        <option key={estado.value} value={estado.value}>
+                          {estado.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Talla de Camisa *
+                    </label>
+                    <select
+                      value={formData.talla_camisa}
+                      onChange={(e) => setFormData({...formData, talla_camisa: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {TALLAS_CAMISA.map((talla) => (
+                        <option key={talla} value={talla}>
+                          {talla}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                 </div>
               </div>
-
 
               <div className="bg-orange-50 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Phone className="h-5 w-5 mr-2 text-orange-600" />
                   Contacto de Emergencia
                 </h2>
-                
+
                 <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre Completo *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nombre_emergencia}
-                      onChange={(e) => setFormData({...formData, nombre_emergencia: e.target.value})}
-                      required
-                      className="input-field"
-                      placeholder="Nombre de contacto de emergencia"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Número de Teléfono *
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.numero_emergencia}
-                      onChange={(e) => setFormData({...formData, numero_emergencia: e.target.value})}
-                      required
-                      className="input-field"
-                      placeholder="Ej: 3001234567"
-                    />
-                  </div>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Parentesco *
@@ -320,6 +430,34 @@ export default function DatosBasicos() {
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombre Completo *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nombre_emergencia}
+                      onChange={(e) => setFormData({...formData, nombre_emergencia: e.target.value})}
+                      required
+                      className="input-field"
+                      placeholder="Nombre de contacto de emergencia"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Teléfono *
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.numero_emergencia}
+                      onChange={(e) => setFormData({...formData, numero_emergencia: e.target.value})}
+                      required
+                      className="input-field"
+                      placeholder="Ej: 3001234567"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -332,7 +470,7 @@ export default function DatosBasicos() {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Anterior
                 </button>
-                
+
                 <div className="text-sm text-gray-600">
                   {candidato.formulario_datos_basicos_completado ? (
                     <span className="flex items-center text-green-600">
@@ -343,7 +481,7 @@ export default function DatosBasicos() {
                     'Campos marcados con * son obligatorios'
                   )}
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={saving}

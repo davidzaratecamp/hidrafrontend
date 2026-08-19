@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Search, 
-  Eye, 
-  Mail, 
-  Edit, 
+import {
+  Search,
+  Eye,
+  Mail,
+  Edit,
   Users,
   Building,
   MapPin,
@@ -12,7 +12,9 @@ import {
   Calendar,
   Phone,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import Sidebar from './Sidebar'
 import ApiService from '../../services/api'
@@ -26,8 +28,11 @@ export default function ListaCandidatos() {
     return localStorage.getItem('listaCandidatos_estadoActivo') || 'nuevo'
   })
   const [searchTerm, setSearchTerm] = useState('')
+  const [busquedaActiva, setBusquedaActiva] = useState('')
   const [loading, setLoading] = useState(true)
   const [mostrarContactosFallidos, setMostrarContactosFallidos] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 })
 
   const estadosConfig = {
     contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
@@ -52,12 +57,29 @@ export default function ListaCandidatos() {
 
   useEffect(() => {
     cargarCandidatos()
-  }, [estadoActivo])
+  }, [estadoActivo, page, busquedaActiva])
 
   // Guardar el estado activo en localStorage cuando cambie
   useEffect(() => {
     localStorage.setItem('listaCandidatos_estadoActivo', estadoActivo)
   }, [estadoActivo])
+
+  // Debounce del buscador (300ms): la búsqueda ahora la resuelve el backend sobre TODO el
+  // estado (no solo la página cargada), así que no conviene disparar un fetch por cada tecla.
+  // Vuelve a la página 1 en el mismo batch en que se actualiza la búsqueda (un solo fetch).
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setBusquedaActiva(searchTerm.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm])
+
+  // Cambia el filtro de estado y vuelve a la página 1 (batched: un solo fetch, no dos)
+  const handleSetEstadoActivo = (estado) => {
+    setEstadoActivo(estado)
+    setPage(1)
+  }
 
   const cargarResumenEstados = async () => {
     try {
@@ -71,8 +93,9 @@ export default function ListaCandidatos() {
   const cargarCandidatos = async () => {
     try {
       setLoading(true)
-      const data = await ApiService.getCandidatosPorEstado(estadoActivo)
-      setCandidatos(data)
+      const data = await ApiService.getCandidatosPorEstado(estadoActivo, page, busquedaActiva)
+      setCandidatos(data.candidatos)
+      setPagination(data.pagination)
     } catch (error) {
       console.error('Error cargando candidatos:', error)
     } finally {
@@ -125,19 +148,6 @@ export default function ListaCandidatos() {
       alert('Error al marcar como no asistió');
     }
   }
-
-  const candidatosFiltrados = candidatos.filter(candidato => {
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      (candidato.primer_nombre || '').toLowerCase().includes(searchLower) ||
-      (candidato.primer_apellido || '').toLowerCase().includes(searchLower) ||
-      (candidato.email_personal || '').toLowerCase().includes(searchLower) ||
-      (candidato.numero_documento || '').includes(searchTerm) ||
-      (candidato.numero_celular || '').includes(searchTerm) ||
-      (candidato.cliente || '').toLowerCase().includes(searchLower) ||
-      (candidato.cargo || '').toLowerCase().includes(searchLower)
-    )
-  })
 
   const getAccionButton = (candidato) => {
     if (candidato.estado === 'contacto_exitoso') {
@@ -221,7 +231,7 @@ export default function ListaCandidatos() {
             {Object.entries(estadosConfig).map(([estado, config]) => (
               <button
                 key={estado}
-                onClick={() => setEstadoActivo(estado)}
+                onClick={() => handleSetEstadoActivo(estado)}
                 className={`px-3 py-2 lg:px-4 lg:py-2 rounded-lg font-medium transition-all text-xs lg:text-sm ${
                   estadoActivo === estado
                     ? config.color + ' shadow-md'
@@ -260,7 +270,7 @@ export default function ListaCandidatos() {
                     <button
                       key={estado}
                       onClick={() => {
-                        setEstadoActivo(estado)
+                        handleSetEstadoActivo(estado)
                         setMostrarContactosFallidos(false)
                       }}
                       className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
@@ -293,7 +303,7 @@ export default function ListaCandidatos() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="text-gray-600 mt-2">Cargando candidatos...</p>
             </div>
-          ) : candidatosFiltrados.length === 0 ? (
+          ) : candidatos.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p>No hay candidatos en este estado</p>
@@ -302,7 +312,7 @@ export default function ListaCandidatos() {
             <>
               {/* Mobile Cards - visible only on small screens */}
               <div className="block lg:hidden">
-                {candidatosFiltrados.map((candidato) => (
+                {candidatos.map((candidato) => (
                   <div key={candidato.id} className="border-b border-gray-200 p-4 last:border-b-0">
                     <div className="flex flex-col space-y-3">
                       {/* Header with name and actions */}
@@ -400,7 +410,7 @@ export default function ListaCandidatos() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {candidatosFiltrados.map((candidato) => (
+                  {candidatos.map((candidato) => (
                     <tr key={candidato.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -481,6 +491,32 @@ export default function ListaCandidatos() {
                 </tbody>
                 </table>
               </div>
+
+              {pagination.totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 px-4 py-3 lg:px-6">
+                  <p className="text-xs lg:text-sm text-gray-600">
+                    Página {pagination.page} de {pagination.totalPages} · {pagination.total} candidatos
+                  </p>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                      disabled={pagination.page <= 1}
+                      className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
+                      disabled={pagination.page >= pagination.totalPages}
+                      className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

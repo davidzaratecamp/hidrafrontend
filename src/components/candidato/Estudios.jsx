@@ -3,17 +3,31 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { GraduationCap, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
 import ApiService from '../../services/api'
 
+// Excel: "FORMATO HOJA DE VIDA", bloque "INFORMACIÓN ACADEMICA" (filas 22-27) - son 4
+// filas fijas, no un nivel único como antes. Bachillerato, Técnico/Tecnólogo y
+// Profesional u Otros son opcionales pero completos si se llenan (institución + título
+// + año, validado en el backend). Conocimientos Informáticos es distinto (2026-08-18,
+// decisión del usuario): texto libre, máx. 500 caracteres, sin institución/título/año.
+const NIVEL_TEXTO_LIBRE = 'conocimientos_informaticos'
+const MAX_DESCRIPCION = 500
+
+const NIVELES = [
+  { value: 'bachillerato', label: 'Bachillerato' },
+  { value: 'tecnico_tecnologo', label: 'Técnico/Tecnólogo' },
+  { value: 'profesional_u_otros', label: 'Profesional u Otros' },
+  { value: NIVEL_TEXTO_LIBRE, label: 'Conocimientos Informáticos' }
+]
+
+const filaVacia = (nivel) => ({
+  nivel_estudios: nivel, nombre_institucion: '', titulo_obtenido: '', ano_finalizacion: '', descripcion: ''
+})
+
 export default function Estudios() {
   const { token } = useParams()
   const navigate = useNavigate()
   const [candidato, setCandidato] = useState(null)
   const [catalogos, setCatalogos] = useState({})
-  const [formData, setFormData] = useState({
-    nivel_estudios: '',
-    titulo_obtenido: '',
-    nombre_institucion: '',
-    ano_finalizacion: ''
-  })
+  const [filas, setFilas] = useState(NIVELES.map((n) => filaVacia(n.value)))
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -27,17 +41,23 @@ export default function Estudios() {
         ApiService.validarToken(token),
         ApiService.getCatalogos()
       ])
-      
+
       setCandidato(candidatoData.candidato)
       setCatalogos(catalogosData)
-      
-      const candidatoInfo = candidatoData.candidato
-      setFormData({
-        nivel_estudios: candidatoInfo.nivel_estudios || '',
-        titulo_obtenido: candidatoInfo.titulo_obtenido || '',
-        nombre_institucion: candidatoInfo.nombre_institucion || '',
-        ano_finalizacion: candidatoInfo.ano_finalizacion || ''
-      })
+
+      const estudiosGuardados = candidatoData.candidato.estudios || []
+      setFilas(NIVELES.map((n) => {
+        const guardado = estudiosGuardados.find((e) => e.nivel_estudios === n.value)
+        return guardado
+          ? {
+              nivel_estudios: n.value,
+              nombre_institucion: guardado.nombre_institucion || '',
+              titulo_obtenido: guardado.titulo_obtenido || '',
+              ano_finalizacion: guardado.ano_finalizacion || '',
+              descripcion: guardado.descripcion || ''
+            }
+          : filaVacia(n.value)
+      }))
     } catch (error) {
       console.error('Error cargando datos:', error)
       alert('Token inválido o expirado')
@@ -46,21 +66,42 @@ export default function Estudios() {
     }
   }
 
+  const actualizarFila = (nivel, campo, valor) => {
+    setFilas((prev) => prev.map((f) => f.nivel_estudios === nivel ? { ...f, [campo]: valor } : f))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    const requiredFields = ['nivel_estudios', 'titulo_obtenido', 'nombre_institucion', 'ano_finalizacion']
-    
-    for (const field of requiredFields) {
-      if (!formData[field]) {
-        alert(`Por favor completa el campo: ${field.replace(/_/g, ' ')}`)
+
+    const filasConDatos = filas.filter((f) =>
+      f.nombre_institucion || f.titulo_obtenido || f.ano_finalizacion || f.descripcion
+    )
+
+    if (filasConDatos.length === 0) {
+      alert('Completa al menos un nivel de estudios')
+      return
+    }
+
+    for (const f of filasConDatos) {
+      const nivel = NIVELES.find((n) => n.value === f.nivel_estudios)?.label
+      if (f.nivel_estudios === NIVEL_TEXTO_LIBRE) {
+        if (!f.descripcion) {
+          alert(`Completa la descripción de "${nivel}"`)
+          return
+        }
+        if (f.descripcion.length > MAX_DESCRIPCION) {
+          alert(`"${nivel}" no puede superar ${MAX_DESCRIPCION} caracteres`)
+          return
+        }
+      } else if (!f.nombre_institucion || !f.titulo_obtenido || !f.ano_finalizacion) {
+        alert(`Completa institución, título y año en "${nivel}" (o deja las 3 casillas vacías si no aplica)`)
         return
       }
     }
-    
+
     try {
       setSaving(true)
-      await ApiService.actualizarEstudios(token, formData)
+      await ApiService.actualizarEstudios(token, { estudios: filasConDatos })
       navigate(`/candidato/experiencia/${token}`)
     } catch (error) {
       console.error('Error guardando:', error)
@@ -98,12 +139,12 @@ export default function Estudios() {
           <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 sm:p-8">
             <div className="flex items-center justify-between flex-col sm:flex-row text-center sm:text-left">
               <div className="mb-4 sm:mb-0">
-                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Formación Académica</h1>
-                <p className="text-purple-100 text-sm sm:text-base">Paso 3 de 6 - Información educativa</p>
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Información Académica</h1>
+                <p className="text-purple-100 text-sm sm:text-base">Paso 3 de 6 - Formación educativa</p>
               </div>
               <GraduationCap className="h-8 w-8 sm:h-12 sm:w-12 text-purple-200" />
             </div>
-            
+
             <div className="mt-6 bg-purple-700 bg-opacity-50 rounded-lg p-4">
               <div className="flex justify-between items-center text-sm">
                 <span>Progreso del formulario</span>
@@ -121,88 +162,91 @@ export default function Estudios() {
           <div className="p-4 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               <div className="bg-purple-50 rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 flex items-center">
                   <GraduationCap className="h-5 w-5 mr-2 text-purple-600" />
-                  Máximo Nivel de Estudios Alcanzado
+                  Información Académica
                 </h2>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nivel de Estudios *
-                    </label>
-                    <select
-                      value={formData.nivel_estudios}
-                      onChange={(e) => setFormData({...formData, nivel_estudios: e.target.value})}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona tu nivel de estudios</option>
-                      {catalogos.niveles_estudios?.map((nivel) => (
-                        <option key={nivel.value} value={nivel.value}>
-                          {nivel.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Año de Finalización *
-                    </label>
-                    <select
-                      value={formData.ano_finalizacion}
-                      onChange={(e) => setFormData({...formData, ano_finalizacion: e.target.value})}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona el año</option>
-                      {catalogos.anios?.map((ano) => (
-                        <option key={ano} value={ano}>
-                          {ano}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Título Obtenido *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.titulo_obtenido}
-                      onChange={(e) => setFormData({...formData, titulo_obtenido: e.target.value})}
-                      required
-                      className="input-field"
-                      placeholder="Ej: Bachiller Académico, Tecnólogo en Sistemas, Ingeniero Industrial..."
-                    />
-                  </div>
-                  
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre de la Institución *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nombre_institucion}
-                      onChange={(e) => setFormData({...formData, nombre_institucion: e.target.value})}
-                      required
-                      className="input-field"
-                      placeholder="Nombre completo de la institución educativa"
-                    />
-                  </div>
-                </div>
-              </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Completa los niveles que apliquen. Deja en blanco los que no correspondan.
+                </p>
 
-              <div className="bg-blue-50 rounded-lg p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">📝 Información Importante</h3>
-                <ul className="text-sm text-gray-700 space-y-2">
-                  <li>• Ingresa información sobre tu <strong>máximo nivel de estudios alcanzado</strong></li>
-                  <li>• Si tienes múltiples títulos, registra el de mayor nivel académico</li>
-                  <li>• Asegúrate de que el nombre de la institución sea completo y correcto</li>
-                  <li>• Si estás actualmente estudiando, indica el año estimado de finalización</li>
-                </ul>
+                <div className="space-y-6">
+                  {NIVELES.map((nivel) => {
+                    const fila = filas.find((f) => f.nivel_estudios === nivel.value)
+                    const esTextoLibre = nivel.value === NIVEL_TEXTO_LIBRE
+
+                    return (
+                      <div key={nivel.value} className="bg-white rounded-lg p-4 border border-purple-100">
+                        <h3 className="font-semibold text-gray-800 mb-3">{nivel.label}</h3>
+
+                        {esTextoLibre ? (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Describe tus conocimientos informáticos
+                            </label>
+                            <textarea
+                              value={fila.descripcion}
+                              onChange={(e) => actualizarFila(nivel.value, 'descripcion', e.target.value.slice(0, MAX_DESCRIPCION))}
+                              className="input-field"
+                              rows="3"
+                              maxLength={MAX_DESCRIPCION}
+                              placeholder="Ej: Manejo de Excel avanzado, Word, PowerPoint, herramientas de CRM..."
+                            />
+                            <p className="text-xs text-gray-500 mt-1 text-right">
+                              {fila.descripcion.length}/{MAX_DESCRIPCION} caracteres
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Nombre Institución
+                              </label>
+                              <input
+                                type="text"
+                                value={fila.nombre_institucion}
+                                onChange={(e) => actualizarFila(nivel.value, 'nombre_institucion', e.target.value)}
+                                className="input-field"
+                                placeholder="Nombre de la institución"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Título Obtenido
+                              </label>
+                              <input
+                                type="text"
+                                value={fila.titulo_obtenido}
+                                onChange={(e) => actualizarFila(nivel.value, 'titulo_obtenido', e.target.value)}
+                                className="input-field"
+                                placeholder="Título obtenido"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Año de Finalización
+                              </label>
+                              <select
+                                value={fila.ano_finalizacion}
+                                onChange={(e) => actualizarFila(nivel.value, 'ano_finalizacion', e.target.value)}
+                                className="input-field"
+                              >
+                                <option value="">Selecciona el año</option>
+                                {catalogos.anios?.map((ano) => (
+                                  <option key={ano} value={ano}>
+                                    {ano}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
 
               <div className="flex justify-between items-center pt-6 border-t">
@@ -214,7 +258,7 @@ export default function Estudios() {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Anterior
                 </button>
-                
+
                 <div className="text-sm text-gray-600">
                   {candidato.formulario_estudios_completado ? (
                     <span className="flex items-center text-green-600">
@@ -222,10 +266,10 @@ export default function Estudios() {
                       Este formulario ya fue completado
                     </span>
                   ) : (
-                    'Campos marcados con * son obligatorios'
+                    'Completa al menos un nivel de estudios'
                   )}
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={saving}

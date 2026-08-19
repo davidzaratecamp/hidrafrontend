@@ -12,15 +12,19 @@ export default function Experiencia() {
     nombre_empresa: '',
     cargo_desempenado: '',
     salario_experiencia: '',
+    funciones: '',
     fecha_inicio_experiencia: '',
     fecha_retiro_experiencia: '',
     tiempo_laborado_anos: 0,
     tiempo_laborado_meses: 0,
     motivo_retiro: '',
-    experiencia_comercial_certificada: '',
-    experiencia_comercial_no_certificada: '',
-    primer_empleo_formal: '',
-    ha_trabajado_asiste: ''
+    ha_trabajado_asiste: '',
+    ha_estado_proceso_formativo_asiste: '',
+    campana_asiste: '',
+    fecha_inicio_asiste: '',
+    fecha_retiro_asiste: '',
+    tiempo_laborado_asiste: '',
+    motivo_retiro_asiste: ''
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -35,10 +39,10 @@ export default function Experiencia() {
         ApiService.validarToken(token),
         ApiService.getCatalogos()
       ])
-      
+
       setCandidato(candidatoData.candidato)
       setCatalogos(catalogosData)
-      
+
       const candidatoInfo = candidatoData.candidato
       setFormData({
         nombre_empresa: candidatoInfo.nombre_empresa || '',
@@ -46,15 +50,19 @@ export default function Experiencia() {
         salario_experiencia: candidatoInfo.salario_experiencia
           ? String(Math.round(parseFloat(candidatoInfo.salario_experiencia)))
           : '',
+        funciones: candidatoInfo.funciones || '',
         fecha_inicio_experiencia: candidatoInfo.fecha_inicio_experiencia || '',
         fecha_retiro_experiencia: candidatoInfo.fecha_retiro_experiencia || '',
         tiempo_laborado_anos: candidatoInfo.tiempo_laborado_anos || 0,
         tiempo_laborado_meses: candidatoInfo.tiempo_laborado_meses || 0,
         motivo_retiro: candidatoInfo.motivo_retiro || '',
-        experiencia_comercial_certificada: candidatoInfo.experiencia_comercial_certificada || '',
-        experiencia_comercial_no_certificada: candidatoInfo.experiencia_comercial_no_certificada || '',
-        primer_empleo_formal: candidatoInfo.primer_empleo_formal || '',
-        ha_trabajado_asiste: candidatoInfo.ha_trabajado_asiste || ''
+        ha_trabajado_asiste: candidatoInfo.ha_trabajado_asiste || '',
+        ha_estado_proceso_formativo_asiste: candidatoInfo.ha_estado_proceso_formativo_asiste || '',
+        campana_asiste: candidatoInfo.campana_asiste || '',
+        fecha_inicio_asiste: candidatoInfo.fecha_inicio_asiste || '',
+        fecha_retiro_asiste: candidatoInfo.fecha_retiro_asiste || '',
+        tiempo_laborado_asiste: candidatoInfo.tiempo_laborado_asiste || '',
+        motivo_retiro_asiste: candidatoInfo.motivo_retiro_asiste || ''
       })
     } catch (error) {
       console.error('Error cargando datos:', error)
@@ -67,7 +75,7 @@ export default function Experiencia() {
   const formatSalary = (value) => {
     // Remover caracteres no numéricos
     const numericValue = value.toString().replace(/[^\d]/g, '')
-    
+
     // Formatear con puntos como separadores de miles
     if (numericValue) {
       return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -85,18 +93,18 @@ export default function Experiencia() {
 
   const calcularTiempoLaborado = (fechaInicio, fechaRetiro) => {
     if (!fechaInicio || !fechaRetiro) return { anos: 0, meses: 0 }
-    
+
     const inicio = new Date(fechaInicio)
     const retiro = new Date(fechaRetiro)
-    
+
     let anos = retiro.getFullYear() - inicio.getFullYear()
     let meses = retiro.getMonth() - inicio.getMonth()
-    
+
     if (meses < 0) {
       anos--
       meses += 12
     }
-    
+
     return { anos, meses }
   }
 
@@ -104,7 +112,7 @@ export default function Experiencia() {
   useEffect(() => {
     if (formData.fecha_inicio_experiencia && formData.fecha_retiro_experiencia) {
       const { anos, meses } = calcularTiempoLaborado(
-        formData.fecha_inicio_experiencia, 
+        formData.fecha_inicio_experiencia,
         formData.fecha_retiro_experiencia
       )
       setFormData(prev => ({
@@ -115,21 +123,24 @@ export default function Experiencia() {
     }
   }, [formData.fecha_inicio_experiencia, formData.fecha_retiro_experiencia])
 
+  // Excel: "SI SU RESPUESTA ES AFIRMATIVA, ¿EN QUE CAMPAÑA LABORÓ?" - los detalles del
+  // reintegro solo aplican si contestó "Sí" a alguna de las 2 preguntas de Asiste ING.
+  const mostrarDetalleAsiste = formData.ha_trabajado_asiste === 'si' || formData.ha_estado_proceso_formativo_asiste === 'si'
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    const requiredFields = ['nombre_empresa', 'cargo_desempenado', 'salario_experiencia', 
+
+    const requiredFields = ['nombre_empresa', 'cargo_desempenado', 'salario_experiencia', 'funciones',
                            'fecha_inicio_experiencia', 'fecha_retiro_experiencia', 'motivo_retiro',
-                           'experiencia_comercial_certificada', 'experiencia_comercial_no_certificada', 
-                           'primer_empleo_formal', 'ha_trabajado_asiste']
-    
+                           'ha_trabajado_asiste', 'ha_estado_proceso_formativo_asiste']
+
     for (const field of requiredFields) {
       if (formData[field] === '' || formData[field] === null || formData[field] === undefined) {
         alert(`Por favor completa el campo: ${field.replace(/_/g, ' ')}`)
         return
       }
     }
-    
+
     try {
       setSaving(true)
       await ApiService.actualizarExperiencia(token, formData)
@@ -175,7 +186,7 @@ export default function Experiencia() {
               </div>
               <Briefcase className="h-8 w-8 sm:h-12 sm:w-12 text-indigo-200" />
             </div>
-            
+
             <div className="mt-6 bg-indigo-700 bg-opacity-50 rounded-lg p-4">
               <div className="flex justify-between items-center text-sm">
                 <span>Progreso del formulario</span>
@@ -197,7 +208,7 @@ export default function Experiencia() {
                   <Briefcase className="h-5 w-5 mr-2 text-indigo-600" />
                   Información de la Empresa
                 </h2>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -212,7 +223,7 @@ export default function Experiencia() {
                       placeholder="Nombre completo de la empresa"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Cargo Desempeñado *
@@ -226,7 +237,7 @@ export default function Experiencia() {
                       placeholder="Título del cargo que desempeñaste"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                       <DollarSign className="h-4 w-4 mr-1" />
@@ -241,6 +252,20 @@ export default function Experiencia() {
                       placeholder="Ejemplo: 2.000.000"
                     />
                   </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Funciones *
+                    </label>
+                    <textarea
+                      value={formData.funciones}
+                      onChange={(e) => setFormData({...formData, funciones: e.target.value})}
+                      required
+                      className="input-field"
+                      rows="3"
+                      placeholder="Describe las funciones principales que realizabas en este cargo"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -249,7 +274,7 @@ export default function Experiencia() {
                   <Calendar className="h-5 w-5 mr-2 text-blue-600" />
                   Fechas y Tiempo
                 </h2>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -263,7 +288,7 @@ export default function Experiencia() {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Fecha de Retiro *
@@ -276,7 +301,7 @@ export default function Experiencia() {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tiempo Laborado
@@ -292,7 +317,7 @@ export default function Experiencia() {
                       className="input-field bg-gray-100 cursor-not-allowed"
                     />
                   </div>
-                  
+
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Motivo de Retiro *
@@ -309,23 +334,24 @@ export default function Experiencia() {
                 </div>
               </div>
 
-              <div className="bg-orange-50 rounded-lg p-4 sm:p-6">
+              {/* Excel: bloque "INFORMACIÓN REINTEGROS" (filas 45-50) */}
+              <div className="bg-green-50 rounded-lg p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-                  Experiencia Comercial
+                  Información Reintegros
                 </h2>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ¿Experiencia comercial certificada? *
+                      ¿Ha laborado con Asiste ING o Asiste Ingeniería? *
                     </label>
                     <select
-                      value={formData.experiencia_comercial_certificada}
-                      onChange={(e) => setFormData({...formData, experiencia_comercial_certificada: e.target.value})}
+                      value={formData.ha_trabajado_asiste}
+                      onChange={(e) => setFormData({...formData, ha_trabajado_asiste: e.target.value})}
                       required
                       className="input-field"
                     >
-                      <option value="">Selecciona</option>
+                      <option value="">Selecciona una opción</option>
                       {catalogos.si_no?.length > 0 ? (
                         catalogos.si_no.map((opcion) => (
                           <option key={opcion.value} value={opcion.value}>
@@ -340,18 +366,18 @@ export default function Experiencia() {
                       )}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ¿Experiencia comercial no certificada? *
+                      ¿Ha estado en proceso formativo con Asiste ING? *
                     </label>
                     <select
-                      value={formData.experiencia_comercial_no_certificada}
-                      onChange={(e) => setFormData({...formData, experiencia_comercial_no_certificada: e.target.value})}
+                      value={formData.ha_estado_proceso_formativo_asiste}
+                      onChange={(e) => setFormData({...formData, ha_estado_proceso_formativo_asiste: e.target.value})}
                       required
                       className="input-field"
                     >
-                      <option value="">Selecciona</option>
+                      <option value="">Selecciona una opción</option>
                       {catalogos.si_no?.length > 0 ? (
                         catalogos.si_no.map((opcion) => (
                           <option key={opcion.value} value={opcion.value}>
@@ -366,75 +392,72 @@ export default function Experiencia() {
                       )}
                     </select>
                   </div>
-                  
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ¿Es tu primer empleo formal? *
-                    </label>
-                    <select
-                      value={formData.primer_empleo_formal}
-                      onChange={(e) => setFormData({...formData, primer_empleo_formal: e.target.value})}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona</option>
-                      {catalogos.si_no?.length > 0 ? (
-                        catalogos.si_no.map((opcion) => (
-                          <option key={opcion.value} value={opcion.value}>
-                            {opcion.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="si">Sí</option>
-                          <option value="no">No</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-green-50 rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-                  Información Adicional
-                </h2>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ¿Has trabajado en Asiste Ing anteriormente? *
-                  </label>
-                  <select
-                    value={formData.ha_trabajado_asiste}
-                    onChange={(e) => setFormData({...formData, ha_trabajado_asiste: e.target.value})}
-                    required
-                    className="input-field"
-                  >
-                    <option value="">Selecciona una opción</option>
-                    {catalogos.si_no?.length > 0 ? (
-                      catalogos.si_no.map((opcion) => (
-                        <option key={opcion.value} value={opcion.value}>
-                          {opcion.label}
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-              </div>
+                  {mostrarDetalleAsiste && (
+                    <>
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Si su respuesta es afirmativa, ¿en qué campaña laboró?
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.campana_asiste}
+                          onChange={(e) => setFormData({...formData, campana_asiste: e.target.value})}
+                          className="input-field"
+                        />
+                      </div>
 
-              <div className="bg-yellow-50 rounded-lg p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">📝 Información Importante</h3>
-                <ul className="text-sm text-gray-700 space-y-2">
-                  <li>• Registra tu <strong>experiencia laboral más reciente</strong> o significativa</li>
-                  <li>• Si no has tenido experiencia laboral formal, puedes incluir prácticas profesionales</li>
-                  <li>• El tiempo laborado (años y meses) se calcula automáticamente según las fechas</li>
-                  <li>• Asegúrate de que las fechas sean coherentes y reales</li>
-                </ul>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Fecha de Inicio
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.fecha_inicio_asiste}
+                          onChange={(e) => setFormData({...formData, fecha_inicio_asiste: e.target.value})}
+                          className="input-field"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Fecha de Retiro
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.fecha_retiro_asiste}
+                          onChange={(e) => setFormData({...formData, fecha_retiro_asiste: e.target.value})}
+                          className="input-field"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tiempo Laborado (indica si fueron meses o años)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.tiempo_laborado_asiste}
+                          onChange={(e) => setFormData({...formData, tiempo_laborado_asiste: e.target.value})}
+                          className="input-field"
+                          placeholder="Ej: 6 meses"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Motivo de Retiro
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.motivo_retiro_asiste}
+                          onChange={(e) => setFormData({...formData, motivo_retiro_asiste: e.target.value})}
+                          className="input-field"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-between items-center pt-6 border-t">
@@ -446,7 +469,7 @@ export default function Experiencia() {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Anterior
                 </button>
-                
+
                 <div className="text-sm text-gray-600">
                   {candidato.formulario_experiencia_completado ? (
                     <span className="flex items-center text-green-600">
@@ -457,7 +480,7 @@ export default function Experiencia() {
                     'Campos marcados con * son obligatorios'
                   )}
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={saving}
