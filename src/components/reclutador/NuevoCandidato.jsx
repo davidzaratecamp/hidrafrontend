@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { UserPlus, Building, MapPin, Phone, Mail, FileText, Save, ArrowLeft, User, Briefcase, MessageSquare } from 'lucide-react'
+import { UserPlus, Building, Phone, Mail, FileText, Save, ArrowLeft, User, Briefcase, MessageSquare } from 'lucide-react'
 import Sidebar from './Sidebar'
 import SidebarSeleccion from '../seleccion/SidebarSeleccion'
 import ApiService from '../../services/api'
@@ -19,22 +19,22 @@ export default function NuevoCandidato() {
   const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
     // Datos principales
-    nacionalidad: '',
     tipo_documento: '',
     numero_documento: '',
-    primer_apellido: '',
-    primer_nombre: '',
+    edad: '',
+    nombre_completo: '',
     email_personal: '',
     numero_celular: '',
-    
+
+    // Contacto (primera gestión)
+    contacto_llamada: '',
+    contacto_whatsapp: '',
+
     // Datos del proceso
     cliente: '',
     oleada: '',
-    ciudad: '',
     cargo: '',
     fuente_reclutamiento: '',
-    fecha_citacion_entrevista: '',
-    hora_citacion_entrevista: '',
     observaciones_llamada: '',
     observaciones_generales: ''
   })
@@ -52,15 +52,6 @@ export default function NuevoCandidato() {
     } catch (error) {
       console.error('Error cargando catálogos:', error)
     }
-  }
-
-  // Lógica condicional para tipo de documento
-  const handleNacionalidadChange = (nacionalidad) => {
-    setFormData({
-      ...formData,
-      nacionalidad,
-      tipo_documento: nacionalidad === 'Colombiano' ? 'CC' : ''
-    })
   }
 
   // Lógica condicional para mostrar/ocultar oleada
@@ -83,6 +74,13 @@ export default function NuevoCandidato() {
         return catalogos.cargos_obamacare || []
       case 'Majority':
         return catalogos.cargos_majority || []
+      case 'Hogar':
+      case 'Móvil':
+      case 'TyT':
+      case 'Pymes':
+      case 'ACA':
+      case 'Customer':
+        return catalogos.cargos_campanas || []
       default:
         return []
     }
@@ -92,14 +90,20 @@ export default function NuevoCandidato() {
     e.preventDefault()
     
     // Validar campos requeridos (cédula y email ahora opcionales)
-    const requiredFields = ['nacionalidad', 'primer_apellido', 'primer_nombre', 
-                           'numero_celular', 'cliente', 'ciudad', 'cargo', 'fuente_reclutamiento', 'observaciones_llamada']
-    
+    const requiredFields = ['tipo_documento', 'nombre_completo',
+                           'numero_celular', 'cliente', 'cargo', 'fuente_reclutamiento', 'observaciones_llamada']
+
     for (const field of requiredFields) {
       if (!formData[field]) {
         alert(`Por favor completa el campo: ${field.replace(/_/g, ' ')}`)
         return
       }
+    }
+
+    // Nombre completo debe tener al menos nombre y apellido
+    if (formData.nombre_completo.trim().split(/\s+/).length < 2) {
+      alert('Escribe el nombre completo del candidato (nombre y apellido, mínimo)')
+      return
     }
 
     // Validar número de documento solo si las observaciones indican "contacto exitoso"
@@ -116,39 +120,28 @@ export default function NuevoCandidato() {
     
     try {
       setSaving(true)
-      
-      // Combinar fecha y hora para enviar al backend
+
       const dataToSend = { ...formData };
-      if (formData.fecha_citacion_entrevista && formData.hora_citacion_entrevista) {
-        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T${formData.hora_citacion_entrevista}:00`;
-      } else if (formData.fecha_citacion_entrevista) {
-        dataToSend.fecha_citacion_entrevista = `${formData.fecha_citacion_entrevista}T00:00:00`;
-      } else {
-        dataToSend.fecha_citacion_entrevista = null;
-      }
-      
+
       // Mapear observaciones de llamada al estado del sistema
       const estadoMap = {
         'Contacto exitoso': 'contacto_exitoso',
-        'Contacto fallido': 'contacto_fallido', 
+        'Contacto fallido': 'contacto_fallido',
         'No contesta': 'no_contesta',
         'Reagendar': 'reagendar',
         'No interesado': 'no_interesado',
         'Numero incorrecto': 'numero_incorrecto',
         'No apto': 'contacto_fallido'
       };
-      
+
       dataToSend.estado = estadoMap[formData.observaciones_llamada] || 'nuevo';
-      
-      // Remover el campo de hora separado antes de enviar
-      delete dataToSend.hora_citacion_entrevista;
-      
+
       const response = await ApiService.crearCandidato(dataToSend)
       alert(`Candidato creado exitosamente. Token: ${response.candidato.token_acceso}`)
       navigate(isSeleccionModule ? '/hydra/seleccion/candidatos' : '/hydra/reclutador/candidatos')
     } catch (error) {
       console.error('Error creando candidato:', error)
-      alert('Error al crear el candidato. Verifica los datos e intenta nuevamente.')
+      alert(error.message || 'Error al crear el candidato. Verifica los datos e intenta nuevamente.')
     } finally {
       setSaving(false)
     }
@@ -198,72 +191,33 @@ export default function NuevoCandidato() {
                 </h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Nacionalidad */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nacionalidad *
-                    </label>
-                    <select
-                      value={formData.nacionalidad}
-                      onChange={(e) => handleNacionalidadChange(e.target.value)}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona nacionalidad</option>
-                      {catalogos.nacionalidades?.length > 0 ? (
-                        catalogos.nacionalidades.map((nac) => (
-                          <option key={nac.value} value={nac.value}>
-                            {nac.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="Colombiano">Colombiano</option>
-                          <option value="Venezolano">Venezolano</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                  
                   {/* Tipo de Documento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tipo de Documento *
                     </label>
-                    {formData.nacionalidad === 'Colombiano' ? (
-                      <input
-                        type="text"
-                        value="CC"
-                        disabled
-                        className="input-field bg-gray-100 cursor-not-allowed"
-                      />
-                    ) : (
-                      <select
-                        value={formData.tipo_documento}
-                        onChange={(e) => setFormData({...formData, tipo_documento: e.target.value})}
-                        required
-                        className="input-field"
-                        disabled={!formData.nacionalidad || formData.nacionalidad === 'Colombiano'}
-                      >
-                        <option value="">Selecciona tipo</option>
-                        {catalogos.tipos_documento_extranjero?.length > 0 ? (
-                          catalogos.tipos_documento_extranjero.map((tipo) => (
-                            <option key={tipo.value} value={tipo.value}>
-                              {tipo.label}
-                            </option>
-                          ))
-                        ) : (
-                          <>
-                            <option value="Pasaporte">Pasaporte</option>
-                            <option value="CE">CE (Cédula de Extranjería)</option>
-                            <option value="DNI">DNI</option>
-                            <option value="Otro">Otro</option>
-                          </>
-                        )}
-                      </select>
-                    )}
+                    <select
+                      value={formData.tipo_documento}
+                      onChange={(e) => setFormData({...formData, tipo_documento: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona tipo</option>
+                      {catalogos.tipos_documento?.length > 0 ? (
+                        catalogos.tipos_documento.map((tipo) => (
+                          <option key={tipo.value} value={tipo.value}>
+                            {tipo.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="CC">CC</option>
+                          <option value="PPT">PPT</option>
+                        </>
+                      )}
+                    </select>
                   </div>
-                  
+
                   {/* Número de Documento */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -290,37 +244,41 @@ export default function NuevoCandidato() {
                       required={formData.observaciones_llamada === 'Contacto exitoso'}
                     />
                   </div>
-                  
-                  {/* Primer Apellido */}
+
+                  {/* Edad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primer Apellido *
+                      Edad
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="120"
+                      value={formData.edad}
+                      onChange={(e) => setFormData({...formData, edad: e.target.value})}
+                      className="input-field"
+                      placeholder="25"
+                    />
+                  </div>
+
+                  {/* Nombre Completo */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombre Completo *
                     </label>
                     <input
                       type="text"
-                      value={formData.primer_apellido}
-                      onChange={(e) => setFormData({...formData, primer_apellido: e.target.value})}
+                      value={formData.nombre_completo}
+                      onChange={(e) => setFormData({...formData, nombre_completo: e.target.value})}
                       required
                       className="input-field"
-                      placeholder="Apellido del candidato"
+                      placeholder="Nombres y apellidos del candidato"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Mínimo nombre y apellido. El sistema separa nombre(s)/apellido(s) automáticamente.
+                    </p>
                   </div>
-                  
-                  {/* Primer Nombre */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primer Nombre *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.primer_nombre}
-                      onChange={(e) => setFormData({...formData, primer_nombre: e.target.value})}
-                      required
-                      className="input-field"
-                      placeholder="Nombre del candidato"
-                    />
-                  </div>
-                  
+
                   {/* Email Personal */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -359,6 +317,68 @@ export default function NuevoCandidato() {
                 </div>
               </div>
 
+              {/* Contacto (primera gestión) */}
+              <div className="bg-green-50 rounded-lg p-4 lg:p-6">
+                <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Phone className="h-4 w-4 lg:h-5 lg:w-5 mr-2 text-green-600 flex-shrink-0" />
+                  Contacto
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Contacto por Llamada */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ¿Se logró contactar por llamada?
+                    </label>
+                    <select
+                      value={formData.contacto_llamada}
+                      onChange={(e) => setFormData({...formData, contacto_llamada: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {catalogos.si_no?.length > 0 ? (
+                        catalogos.si_no.map((opcion) => (
+                          <option key={opcion.value} value={opcion.value}>
+                            {opcion.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Contacto por WhatsApp */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ¿Se logró contactar por WhatsApp?
+                    </label>
+                    <select
+                      value={formData.contacto_whatsapp}
+                      onChange={(e) => setFormData({...formData, contacto_whatsapp: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {catalogos.si_no?.length > 0 ? (
+                        catalogos.si_no.map((opcion) => (
+                          <option key={opcion.value} value={opcion.value}>
+                            {opcion.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {/* Datos del Proceso de Reclutamiento */}
               <div className="bg-purple-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -392,6 +412,12 @@ export default function NuevoCandidato() {
                           <option value="Claro">Claro</option>
                           <option value="Obamacare">Obamacare</option>
                           <option value="Majority">Majority</option>
+                          <option value="Hogar">Hogar</option>
+                          <option value="Móvil">Móvil</option>
+                          <option value="TyT">TyT</option>
+                          <option value="Pymes">Pymes</option>
+                          <option value="ACA">ACA</option>
+                          <option value="Customer">Customer</option>
                         </>
                       )}
                     </select>
@@ -413,34 +439,6 @@ export default function NuevoCandidato() {
                       />
                     </div>
                   )}
-                  
-                  {/* Ciudad que Aplica */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      Ciudad que Aplica *
-                    </label>
-                    <select
-                      value={formData.ciudad}
-                      onChange={(e) => setFormData({...formData, ciudad: e.target.value})}
-                      required
-                      className="input-field"
-                    >
-                      <option value="">Selecciona ciudad</option>
-                      {catalogos.ciudades?.length > 0 ? (
-                        catalogos.ciudades.map((ciudad) => (
-                          <option key={ciudad.value} value={ciudad.value}>
-                            {ciudad.label}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="Bogotá">Bogotá</option>
-                          <option value="Barranquilla">Barranquilla</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
                   
                   {/* Cargo que Aplica */}
                   <div className="md:col-span-2">
@@ -537,6 +535,32 @@ export default function NuevoCandidato() {
                             </>
                           ) : formData.cliente === 'Majority' ? (
                             <option value="Agente Call Center">Agente Call Center</option>
+                          ) : ['Hogar', 'Móvil', 'TyT', 'Pymes', 'ACA', 'Customer'].includes(formData.cliente) ? (
+                            <>
+                              <option value="Agente">Agente</option>
+                              <option value="Agente Plus">Agente Plus</option>
+                              <option value="Analista De Calidad">Analista De Calidad</option>
+                              <option value="Analista De Reclutamiento">Analista De Reclutamiento</option>
+                              <option value="Analista De Seleccion">Analista De Seleccion</option>
+                              <option value="Analista De Usuarios">Analista De Usuarios</option>
+                              <option value="Analista PQR">Analista PQR</option>
+                              <option value="BackOffice">BackOffice</option>
+                              <option value="Community Manager">Community Manager</option>
+                              <option value="Coordinador">Coordinador</option>
+                              <option value="Coordinador BackOffice">Coordinador BackOffice</option>
+                              <option value="Coordinador De Reclutamiento Y Selección">Coordinador De Reclutamiento Y Selección</option>
+                              <option value="Coordinadora De Calidad">Coordinadora De Calidad</option>
+                              <option value="Director de formación">Director de formación</option>
+                              <option value="Formador">Formador</option>
+                              <option value="Formador Senior">Formador Senior</option>
+                              <option value="Jefe de operacion">Jefe de operacion</option>
+                              <option value="Jefe De Reclutamiento Y Selección">Jefe De Reclutamiento Y Selección</option>
+                              <option value="Legalizador">Legalizador</option>
+                              <option value="Psicologo De Seleccion">Psicologo De Seleccion</option>
+                              <option value="Team Leader">Team Leader</option>
+                              <option value="Team Lider BackOffice">Team Lider BackOffice</option>
+                              <option value="Team Lider Operaciones">Team Lider Operaciones</option>
+                            </>
                           ) : null}
                         </>
                       ) : null}
@@ -576,32 +600,6 @@ export default function NuevoCandidato() {
                         </>
                       )}
                     </select>
-                  </div>
-                  
-                  {/* Fecha de Citación a Entrevista */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha de Citación a Entrevista
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.fecha_citacion_entrevista}
-                      onChange={(e) => setFormData({...formData, fecha_citacion_entrevista: e.target.value})}
-                      className="input-field"
-                    />
-                  </div>
-                  
-                  {/* Hora de Citación a Entrevista */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Hora de Citación a Entrevista
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.hora_citacion_entrevista}
-                      onChange={(e) => setFormData({...formData, hora_citacion_entrevista: e.target.value})}
-                      className="input-field"
-                    />
                   </div>
                 </div>
               </div>
@@ -671,7 +669,6 @@ export default function NuevoCandidato() {
                 <h4 className="text-sm font-semibold text-gray-900 mb-2">📝 Información Importante</h4>
                 <ul className="text-xs text-gray-700 space-y-1">
                   <li>• Los campos marcados con (*) son obligatorios</li>
-                  <li>• Si el candidato es colombiano, el tipo de documento se asigna automáticamente como "CC"</li>
                   <li>• El campo "Oleada" solo aparece para clientes que no son Staff</li>
                   <li>• Los cargos disponibles cambian según el cliente seleccionado</li>
                   <li>• El candidato recibirá un email con los formularios a completar</li>

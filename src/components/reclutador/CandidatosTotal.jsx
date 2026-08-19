@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import {
   Users, UserCheck, CheckCircle,
   Clock, Eye,
-  Filter, Search, RefreshCw, BarChart3
+  Filter, Search, RefreshCw, BarChart3,
+  ChevronLeft, ChevronRight
 } from 'lucide-react'
 import Sidebar from './Sidebar'
 
@@ -11,6 +12,9 @@ export default function CandidatosTotal() {
   const navigate = useNavigate()
   const [candidatos, setCandidatos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 })
+  const [filtrosDisponibles, setFiltrosDisponibles] = useState({ operaciones: [], reclutadores: [] })
   const [filtros, setFiltros] = useState({
     buscar: '',
     operacion: '',
@@ -18,13 +22,43 @@ export default function CandidatosTotal() {
     estado: '',
     reclutador: ''
   })
+  // Texto de búsqueda tras el debounce (ver más abajo) - separado de filtros.buscar para no
+  // disparar un fetch en cada tecla.
+  const [busquedaActiva, setBusquedaActiva] = useState('')
   const [estadisticas, setEstadisticas] = useState(null)
 
   const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
 
   useEffect(() => {
-    cargarDatos()
+    cargarEstadisticas()
   }, [])
+
+  // Paginado + filtros/búsqueda server-side (2026-08-19): antes traía TODOS los candidatos
+  // citados y filtraba en el frontend. Usa /candidatos-total (endpoint dedicado a esta
+  // pantalla de solo lectura), no /candidatos-citados - ese lo sigue usando sin paginar la
+  // pantalla de trabajo de Selección (CandidatosSeleccion.jsx).
+  useEffect(() => {
+    cargarCandidatos()
+  }, [page, busquedaActiva, filtros.operacion, filtros.asistencia, filtros.estado, filtros.reclutador])
+
+  // Debounce del buscador (300ms) - vuelve a página 1 en el mismo batch en que se activa la
+  // búsqueda (un solo fetch, no dos).
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setBusquedaActiva(filtros.buscar.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [filtros.buscar])
+
+  // Cambia un filtro (select) y vuelve a página 1 en el mismo batch, salvo "buscar" que ya
+  // lo maneja el debounce de arriba.
+  const actualizarFiltro = (campo, valor) => {
+    setFiltros(prev => ({ ...prev, [campo]: valor }))
+    if (campo !== 'buscar') {
+      setPage(1)
+    }
+  }
 
   const cargarDatos = async () => {
     setLoading(true)
@@ -41,9 +75,17 @@ export default function CandidatosTotal() {
   }
 
   const cargarCandidatos = async () => {
+    setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/seleccion/candidatos-citados`, {
+      const params = new URLSearchParams({ page })
+      if (busquedaActiva) params.set('search', busquedaActiva)
+      if (filtros.operacion) params.set('operacion', filtros.operacion)
+      if (filtros.asistencia) params.set('asistencia', filtros.asistencia)
+      if (filtros.estado) params.set('estado', filtros.estado)
+      if (filtros.reclutador) params.set('reclutador', filtros.reclutador)
+
+      const response = await fetch(`${API_URL}/api/seleccion/candidatos-total?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -53,9 +95,13 @@ export default function CandidatosTotal() {
       if (response.ok) {
         const data = await response.json()
         setCandidatos(data.candidatos)
+        setPagination(data.pagination)
+        setFiltrosDisponibles(data.filtrosDisponibles)
       }
     } catch (error) {
       console.error('Error cargando candidatos:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -76,30 +122,6 @@ export default function CandidatosTotal() {
     } catch (error) {
       console.error('Error cargando estadísticas:', error)
     }
-  }
-
-  const candidatosFiltrados = candidatos.filter(candidato => {
-    const matchBuscar = !filtros.buscar ||
-      `${candidato.primer_nombre} ${candidato.primer_apellido}`.toLowerCase().includes(filtros.buscar.toLowerCase()) ||
-      candidato.email_personal?.toLowerCase().includes(filtros.buscar.toLowerCase()) ||
-      candidato.numero_celular?.includes(filtros.buscar)
-
-    const matchOperacion = !filtros.operacion || candidato.cliente === filtros.operacion
-    const matchAsistencia = !filtros.asistencia || candidato.asistio_citacion === filtros.asistencia
-    const matchEstado = !filtros.estado || candidato.estado === filtros.estado
-    const matchReclutador = !filtros.reclutador || candidato.nombre_reclutador === filtros.reclutador
-
-    return matchBuscar && matchOperacion && matchAsistencia && matchEstado && matchReclutador
-  })
-
-  const getOperacionesUnicas = () => {
-    const operaciones = [...new Set(candidatos.map(c => c.cliente))]
-    return operaciones.filter(op => op)
-  }
-
-  const getReclutadoresUnicos = () => {
-    const reclutadores = [...new Set(candidatos.map(c => c.nombre_reclutador))]
-    return reclutadores.filter(r => r).sort()
   }
 
   const formatearFecha = (fecha) => {
@@ -257,7 +279,7 @@ export default function CandidatosTotal() {
                     type="text"
                     placeholder="Nombre, email o teléfono..."
                     value={filtros.buscar}
-                    onChange={(e) => setFiltros({...filtros, buscar: e.target.value})}
+                    onChange={(e) => actualizarFiltro('buscar', e.target.value)}
                     className="pl-10 input-field"
                   />
                 </div>
@@ -267,11 +289,11 @@ export default function CandidatosTotal() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Operación</label>
                 <select
                   value={filtros.operacion}
-                  onChange={(e) => setFiltros({...filtros, operacion: e.target.value})}
+                  onChange={(e) => actualizarFiltro('operacion', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todas las operaciones</option>
-                  {getOperacionesUnicas().map(operacion => (
+                  {filtrosDisponibles.operaciones.map(operacion => (
                     <option key={operacion} value={operacion}>{operacion}</option>
                   ))}
                 </select>
@@ -281,7 +303,7 @@ export default function CandidatosTotal() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Asistencia</label>
                 <select
                   value={filtros.asistencia}
-                  onChange={(e) => setFiltros({...filtros, asistencia: e.target.value})}
+                  onChange={(e) => actualizarFiltro('asistencia', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todas</option>
@@ -295,7 +317,7 @@ export default function CandidatosTotal() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                 <select
                   value={filtros.estado}
-                  onChange={(e) => setFiltros({...filtros, estado: e.target.value})}
+                  onChange={(e) => actualizarFiltro('estado', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todos</option>
@@ -310,11 +332,11 @@ export default function CandidatosTotal() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Reclutador</label>
                 <select
                   value={filtros.reclutador}
-                  onChange={(e) => setFiltros({...filtros, reclutador: e.target.value})}
+                  onChange={(e) => actualizarFiltro('reclutador', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todos</option>
-                  {getReclutadoresUnicos().map(reclutador => (
+                  {filtrosDisponibles.reclutadores.map(reclutador => (
                     <option key={reclutador} value={reclutador}>{reclutador}</option>
                   ))}
                 </select>
@@ -326,11 +348,11 @@ export default function CandidatosTotal() {
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="p-4 lg:p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                Candidatos ({candidatosFiltrados.length})
+                Candidatos ({pagination.total})
               </h3>
             </div>
 
-            {candidatosFiltrados.length === 0 ? (
+            {candidatos.length === 0 ? (
               <div className="p-8 text-center">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No se encontraron candidatos citados</p>
@@ -367,7 +389,7 @@ export default function CandidatosTotal() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {candidatosFiltrados.map((candidato) => (
+                    {candidatos.map((candidato) => (
                       <tr key={candidato.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div>
@@ -443,6 +465,32 @@ export default function CandidatosTotal() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {pagination.totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 px-4 py-3 lg:px-6">
+                <p className="text-xs lg:text-sm text-gray-600">
+                  Página {pagination.page} de {pagination.totalPages} · {pagination.total} candidatos
+                </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={pagination.page <= 1}
+                    className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

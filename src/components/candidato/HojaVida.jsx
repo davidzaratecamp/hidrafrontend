@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { FileText, User, Building, Calendar, ArrowRight, CheckCircle } from 'lucide-react'
+import { FileText, User, Calendar, ArrowRight, CheckCircle } from 'lucide-react'
 import ApiService from '../../services/api'
 
 export default function HojaVida() {
   const { token } = useParams()
   const navigate = useNavigate()
   const [candidato, setCandidato] = useState(null)
-  const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
-    estado_civil: ''
+    aspiracion_salarial: ''
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -20,16 +19,12 @@ export default function HojaVida() {
 
   const cargarDatos = async () => {
     try {
-      const [candidatoData, catalogosData] = await Promise.all([
-        ApiService.validarToken(token),
-        ApiService.getCatalogos()
-      ])
-      
+      const candidatoData = await ApiService.validarToken(token)
+
       setCandidato(candidatoData.candidato)
-      setCatalogos(catalogosData)
-      
-      if (candidatoData.candidato.estado_civil) {
-        setFormData({ estado_civil: candidatoData.candidato.estado_civil })
+
+      if (candidatoData.candidato.aspiracion_salarial) {
+        setFormData({ aspiracion_salarial: candidatoData.candidato.aspiracion_salarial })
       }
     } catch (error) {
       console.error('Error cargando datos:', error)
@@ -42,8 +37,8 @@ export default function HojaVida() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.estado_civil) {
-      alert('Por favor selecciona tu estado civil')
+    if (!formData.aspiracion_salarial) {
+      alert('Por favor indica tu aspiración salarial')
       return
     }
     
@@ -108,92 +103,79 @@ export default function HojaVida() {
           </div>
 
           <div className="p-4 sm:p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
-              <div className="space-y-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <User className="h-5 w-5 mr-2 text-blue-600" />
-                  Información Personal
-                </h2>
-                
-                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Nombre Completo</label>
-                    <p className="text-gray-900 font-medium">
-                      {candidato.primer_nombre} {candidato.primer_apellido}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Email</label>
-                    <p className="text-gray-900">{candidato.email_personal}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Documento</label>
-                    <p className="text-gray-900">
-                      {candidato.tipo_documento}: {candidato.numero_documento}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <Building className="h-5 w-5 mr-2 text-blue-600" />
-                  Información del Proceso
-                </h2>
-                
-                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Cliente</label>
-                    <p className="text-gray-900 font-medium">{candidato.cliente}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">Cargo</label>
-                    <p className="text-gray-900">{candidato.cargo}</p>
-                  </div>
-                  {candidato.oleada && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Oleada</label>
-                      <p className="text-gray-900">{candidato.oleada}</p>
-                    </div>
-                  )}
-                  {candidato.fecha_citacion_entrevista && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        Fecha de Entrevista
-                      </label>
-                      <p className="text-gray-900">
-                        {new Date(candidato.fecha_citacion_entrevista).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
+            {/* Excel: "FORMATO HOJA DE VIDA", bloque "DATOS BÁSICOS" (filas 4-8) - el
+                formulario arranca directo con este bloque, sin paneles de bienvenida
+                previos. Fecha de Entrevista, Fuente de Reclutamiento y Cargo al que
+                Aspira ya los registró el reclutador en "Nuevo Candidato" y se muestran
+                de solo lectura; Aspiración Salarial es el único dato que aporta el
+                candidato (decisión del usuario, 2026-08-18). */}
             <form onSubmit={handleSubmit}>
               <div className="bg-blue-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-                  Información Requerida
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <User className="h-5 w-5 mr-2 text-blue-600" />
+                  Datos Básicos
                 </h2>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estado Civil *
-                  </label>
-                  <select
-                    value={formData.estado_civil}
-                    onChange={(e) => setFormData({...formData, estado_civil: e.target.value})}
-                    required
-                    className="input-field"
-                  >
-                    <option value="">Selecciona tu estado civil</option>
-                    {catalogos.estados_civiles?.map((estado) => (
-                      <option key={estado.value} value={estado.value}>
-                        {estado.label}
-                      </option>
-                    ))}
-                  </select>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <Calendar className="h-4 w-4 mr-1 text-gray-400" />
+                      Fecha de Entrevista
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        candidato.fecha_citacion_entrevista
+                          ? new Date(candidato.fecha_citacion_entrevista).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
+                          : 'Pendiente de agendar'
+                      }
+                      readOnly
+                      disabled
+                      className="input-field bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fuente de Reclutamiento
+                    </label>
+                    <input
+                      type="text"
+                      value={candidato.fuente_reclutamiento || 'No registrada'}
+                      readOnly
+                      disabled
+                      className="input-field bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cargo al que Aspira
+                    </label>
+                    <input
+                      type="text"
+                      value={candidato.cargo || ''}
+                      readOnly
+                      disabled
+                      className="input-field bg-gray-100 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Aspiración Salarial *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      value={formData.aspiracion_salarial}
+                      onChange={(e) => setFormData({...formData, aspiracion_salarial: e.target.value})}
+                      required
+                      className="input-field"
+                      placeholder="Ej: 1800000"
+                    />
+                  </div>
                 </div>
               </div>
 

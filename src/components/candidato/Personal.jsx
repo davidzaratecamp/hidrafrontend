@@ -9,13 +9,21 @@ export default function Personal() {
   const [candidato, setCandidato] = useState(null)
   const [catalogos, setCatalogos] = useState({})
   const [formData, setFormData] = useState({
+    genograma: '',
     fortalezas: '',
     aspectos_mejorar: '',
     competencias_laborales: '',
+    metas_corto_plazo: '',
+    metas_mediano_plazo: '',
+    metas_largo_plazo: '',
+    estado_salud_actual: '',
     conocimiento_excel: '',
     conocimiento_powerpoint: '',
     conocimiento_word: '',
-    autoevaluacion: ''
+    autoevaluacion: '',
+    experiencia_comercial_certificada: '',
+    experiencia_comercial_no_certificada: '',
+    primer_empleo_formal: ''
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -36,13 +44,21 @@ export default function Personal() {
       
       const candidatoInfo = candidatoData.candidato
       setFormData({
+        genograma: candidatoInfo.genograma || '',
         fortalezas: candidatoInfo.fortalezas || '',
         aspectos_mejorar: candidatoInfo.aspectos_mejorar || '',
         competencias_laborales: candidatoInfo.competencias_laborales || '',
+        metas_corto_plazo: candidatoInfo.metas_corto_plazo || '',
+        metas_mediano_plazo: candidatoInfo.metas_mediano_plazo || '',
+        metas_largo_plazo: candidatoInfo.metas_largo_plazo || '',
+        estado_salud_actual: candidatoInfo.estado_salud_actual || '',
         conocimiento_excel: candidatoInfo.conocimiento_excel || '',
         conocimiento_powerpoint: candidatoInfo.conocimiento_powerpoint || '',
         conocimiento_word: candidatoInfo.conocimiento_word || '',
-        autoevaluacion: candidatoInfo.autoevaluacion || ''
+        autoevaluacion: candidatoInfo.autoevaluacion || '',
+        experiencia_comercial_certificada: candidatoInfo.experiencia_comercial_certificada || '',
+        experiencia_comercial_no_certificada: candidatoInfo.experiencia_comercial_no_certificada || '',
+        primer_empleo_formal: candidatoInfo.primer_empleo_formal || ''
       })
     } catch (error) {
       console.error('Error cargando datos:', error)
@@ -56,8 +72,10 @@ export default function Personal() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    const requiredFields = ['fortalezas', 'aspectos_mejorar', 'competencias_laborales',
-                           'conocimiento_excel', 'conocimiento_powerpoint', 'conocimiento_word', 'autoevaluacion']
+    const requiredFields = ['genograma', 'fortalezas', 'aspectos_mejorar', 'competencias_laborales',
+                           'metas_corto_plazo', 'metas_mediano_plazo', 'metas_largo_plazo', 'estado_salud_actual',
+                           'conocimiento_excel', 'conocimiento_powerpoint', 'conocimiento_word', 'autoevaluacion',
+                           'experiencia_comercial_certificada', 'experiencia_comercial_no_certificada', 'primer_empleo_formal']
     
     for (const field of requiredFields) {
       if (!formData[field]) {
@@ -128,7 +146,25 @@ export default function Personal() {
 
           <div className="p-4 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-              
+
+              {/* Excel: "GENOGRAMA" (fila 60-61) */}
+              <div className="bg-yellow-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                  Genograma
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Nota: hace referencia a con quién vive usted, su núcleo familiar.
+                </p>
+                <textarea
+                  value={formData.genograma}
+                  onChange={(e) => setFormData({...formData, genograma: e.target.value})}
+                  required
+                  rows={3}
+                  className="input-field"
+                  placeholder="Describe con quién vives actualmente"
+                />
+              </div>
+
               <div className="bg-green-50 rounded-lg p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center">
                   <Star className="h-5 w-5 mr-2 text-green-600" />
@@ -180,6 +216,71 @@ export default function Personal() {
                 </div>
               </div>
 
+              {/* Excel: "METAS (Corto – Mediano – Largo plazo)" */}
+              <div className="bg-teal-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
+                  Metas
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Corto Plazo *
+                    </label>
+                    <textarea
+                      value={formData.metas_corto_plazo}
+                      onChange={(e) => setFormData({...formData, metas_corto_plazo: e.target.value})}
+                      required
+                      rows={3}
+                      className="input-field"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mediano Plazo *
+                    </label>
+                    <textarea
+                      value={formData.metas_mediano_plazo}
+                      onChange={(e) => setFormData({...formData, metas_mediano_plazo: e.target.value})}
+                      required
+                      rows={3}
+                      className="input-field"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Largo Plazo *
+                    </label>
+                    <textarea
+                      value={formData.metas_largo_plazo}
+                      onChange={(e) => setFormData({...formData, metas_largo_plazo: e.target.value})}
+                      required
+                      rows={3}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Excel: "Estado de salud actual" */}
+              <div className="bg-red-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
+                  Estado de Salud Actual
+                </h2>
+                <select
+                  value={formData.estado_salud_actual}
+                  onChange={(e) => setFormData({...formData, estado_salud_actual: e.target.value})}
+                  required
+                  className="input-field"
+                >
+                  <option value="">Selecciona una opción</option>
+                  <option value="Bueno">Bueno</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Malo">Malo</option>
+                </select>
+              </div>
 
               <div className="bg-orange-50 rounded-lg p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
@@ -295,6 +396,94 @@ export default function Personal() {
                 </div>
               </div>
 
+              {/* Excel: "Marque con un (X) según corresponda" - preguntas de experiencia
+                  comercial, físicamente junto a la autoevaluación de herramientas
+                  ofimáticas (no en "Experiencia Laboral", movidas aquí 2026-08-18). */}
+              <div className="bg-purple-50 rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
+                  Experiencia Comercial
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ¿Experiencia comercial certificada mínimo de 3 meses? *
+                    </label>
+                    <select
+                      value={formData.experiencia_comercial_certificada}
+                      onChange={(e) => setFormData({...formData, experiencia_comercial_certificada: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {catalogos.si_no?.length > 0 ? (
+                        catalogos.si_no.map((opcion) => (
+                          <option key={opcion.value} value={opcion.value}>
+                            {opcion.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ¿Tiene experiencia comercial pero no está certificada? *
+                    </label>
+                    <select
+                      value={formData.experiencia_comercial_no_certificada}
+                      onChange={(e) => setFormData({...formData, experiencia_comercial_no_certificada: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {catalogos.si_no?.length > 0 ? (
+                        catalogos.si_no.map((opcion) => (
+                          <option key={opcion.value} value={opcion.value}>
+                            {opcion.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ¿Es su primer empleo? *
+                    </label>
+                    <select
+                      value={formData.primer_empleo_formal}
+                      onChange={(e) => setFormData({...formData, primer_empleo_formal: e.target.value})}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Selecciona</option>
+                      {catalogos.si_no?.length > 0 ? (
+                        catalogos.si_no.map((opcion) => (
+                          <option key={opcion.value} value={opcion.value}>
+                            {opcion.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
+              </div>
 
               <div className="flex justify-between items-center pt-6 border-t">
                 <button
