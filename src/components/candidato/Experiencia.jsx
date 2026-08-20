@@ -3,6 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Briefcase, ArrowRight, ArrowLeft, CheckCircle, DollarSign, Calendar } from 'lucide-react'
 import ApiService from '../../services/api'
 
+// Límites calculados contra el ancho/alto real de cada celda de hojavida.pdf
+// (hojaVidaPdfService.js), reutilizando la lógica real de ajuste de texto
+// (fitSingleLine/wrapLines) con texto representativo en español — 10% de margen en campos de
+// una línea, 5% en cajas multilínea (el wrap por palabras ya deja menos margen de sobra).
+const MAX_NOMBRE_EMPRESA = 54
+const MAX_CARGO_DESEMPENADO = 24
+const MAX_SALARIO_DIGITS = 20
+const MAX_FUNCIONES = 518
+const MAX_MOTIVO_RETIRO = 27
+const MAX_CAMPANA_ASISTE = 102
+const MAX_TIEMPO_LABORADO_ASISTE = 24
+const MAX_MOTIVO_RETIRO_ASISTE = 34
+
 export default function Experiencia() {
   const { token } = useParams()
   const navigate = useNavigate()
@@ -84,7 +97,7 @@ export default function Experiencia() {
   }
 
   const handleSalaryChange = (e) => {
-    const rawValue = e.target.value.replace(/[^\d]/g, '') // Solo números
+    const rawValue = e.target.value.replace(/[^\d]/g, '').slice(0, MAX_SALARIO_DIGITS) // Solo números
     setFormData({
       ...formData,
       salario_experiencia: rawValue // Guardar valor numérico puro
@@ -217,11 +230,15 @@ export default function Experiencia() {
                     <input
                       type="text"
                       value={formData.nombre_empresa}
-                      onChange={(e) => setFormData({...formData, nombre_empresa: e.target.value})}
+                      onChange={(e) => setFormData({...formData, nombre_empresa: e.target.value.slice(0, MAX_NOMBRE_EMPRESA)})}
                       required
+                      maxLength={MAX_NOMBRE_EMPRESA}
                       className="input-field"
                       placeholder="Nombre completo de la empresa"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.nombre_empresa.length}/{MAX_NOMBRE_EMPRESA} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -231,11 +248,15 @@ export default function Experiencia() {
                     <input
                       type="text"
                       value={formData.cargo_desempenado}
-                      onChange={(e) => setFormData({...formData, cargo_desempenado: e.target.value})}
+                      onChange={(e) => setFormData({...formData, cargo_desempenado: e.target.value.slice(0, MAX_CARGO_DESEMPENADO)})}
                       required
+                      maxLength={MAX_CARGO_DESEMPENADO}
                       className="input-field"
                       placeholder="Título del cargo que desempeñaste"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.cargo_desempenado.length}/{MAX_CARGO_DESEMPENADO} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -248,9 +269,13 @@ export default function Experiencia() {
                       value={formatSalary(formData.salario_experiencia)}
                       onChange={handleSalaryChange}
                       required
+                      maxLength={MAX_SALARIO_DIGITS + 6}
                       className="input-field"
                       placeholder="Ejemplo: 2.000.000"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.salario_experiencia.length}/{MAX_SALARIO_DIGITS} dígitos
+                    </p>
                   </div>
 
                   <div className="sm:col-span-2">
@@ -259,12 +284,16 @@ export default function Experiencia() {
                     </label>
                     <textarea
                       value={formData.funciones}
-                      onChange={(e) => setFormData({...formData, funciones: e.target.value})}
+                      onChange={(e) => setFormData({...formData, funciones: e.target.value.slice(0, MAX_FUNCIONES)})}
                       required
                       className="input-field"
                       rows="3"
+                      maxLength={MAX_FUNCIONES}
                       placeholder="Describe las funciones principales que realizabas en este cargo"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.funciones.length}/{MAX_FUNCIONES} caracteres
+                    </p>
                   </div>
                 </div>
               </div>
@@ -324,12 +353,16 @@ export default function Experiencia() {
                     </label>
                     <textarea
                       value={formData.motivo_retiro}
-                      onChange={(e) => setFormData({...formData, motivo_retiro: e.target.value})}
+                      onChange={(e) => setFormData({...formData, motivo_retiro: e.target.value.slice(0, MAX_MOTIVO_RETIRO)})}
                       required
                       className="input-field"
-                      rows="3"
-                      placeholder="Describe brevemente el motivo por el cual dejaste este empleo"
+                      rows="2"
+                      maxLength={MAX_MOTIVO_RETIRO}
+                      placeholder="Motivo breve (ej: Nueva oportunidad laboral)"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.motivo_retiro.length}/{MAX_MOTIVO_RETIRO} caracteres — la plantilla solo tiene espacio para una frase corta
+                    </p>
                   </div>
                 </div>
               </div>
@@ -402,9 +435,13 @@ export default function Experiencia() {
                         <input
                           type="text"
                           value={formData.campana_asiste}
-                          onChange={(e) => setFormData({...formData, campana_asiste: e.target.value})}
+                          onChange={(e) => setFormData({...formData, campana_asiste: e.target.value.slice(0, MAX_CAMPANA_ASISTE)})}
+                          maxLength={MAX_CAMPANA_ASISTE}
                           className="input-field"
                         />
+                        <p className="text-xs text-gray-500 mt-1 text-right">
+                          {formData.campana_asiste.length}/{MAX_CAMPANA_ASISTE} caracteres
+                        </p>
                       </div>
 
                       <div>
@@ -438,10 +475,14 @@ export default function Experiencia() {
                         <input
                           type="text"
                           value={formData.tiempo_laborado_asiste}
-                          onChange={(e) => setFormData({...formData, tiempo_laborado_asiste: e.target.value})}
+                          onChange={(e) => setFormData({...formData, tiempo_laborado_asiste: e.target.value.slice(0, MAX_TIEMPO_LABORADO_ASISTE)})}
+                          maxLength={MAX_TIEMPO_LABORADO_ASISTE}
                           className="input-field"
                           placeholder="Ej: 6 meses"
                         />
+                        <p className="text-xs text-gray-500 mt-1 text-right">
+                          {formData.tiempo_laborado_asiste.length}/{MAX_TIEMPO_LABORADO_ASISTE} caracteres
+                        </p>
                       </div>
 
                       <div>
@@ -451,9 +492,13 @@ export default function Experiencia() {
                         <input
                           type="text"
                           value={formData.motivo_retiro_asiste}
-                          onChange={(e) => setFormData({...formData, motivo_retiro_asiste: e.target.value})}
+                          onChange={(e) => setFormData({...formData, motivo_retiro_asiste: e.target.value.slice(0, MAX_MOTIVO_RETIRO_ASISTE)})}
+                          maxLength={MAX_MOTIVO_RETIRO_ASISTE}
                           className="input-field"
                         />
+                        <p className="text-xs text-gray-500 mt-1 text-right">
+                          {formData.motivo_retiro_asiste.length}/{MAX_MOTIVO_RETIRO_ASISTE} caracteres
+                        </p>
                       </div>
                     </>
                   )}

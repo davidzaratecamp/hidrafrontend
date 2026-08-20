@@ -6,6 +6,18 @@ import ApiService from '../../services/api'
 // Excel: "FORMATO HOJA DE VIDA" no trae catálogo de tallas - lista estándar local.
 const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 
+// Límites de caracteres calculados contra el ancho real de cada celda en hojavida.pdf
+// (services/hojaVidaPdfService.js), reutilizando la lógica real de ajuste de texto
+// (fitSingleLine) con texto representativo en español y 10% de margen de seguridad — no son
+// números arbitrarios, es la cantidad máxima que esa celda puede mostrar sin truncarse.
+const MAX_NOMBRE_COMPLETO = 81
+const MAX_NUMERO_DOCUMENTO = 21
+const MAX_NUMERO_CELULAR = 21
+const MAX_DIRECCION_RESIDENCIAL = 65
+const MAX_BARRIO = 26
+const MAX_NOMBRE_EMERGENCIA = 63
+const MAX_NUMERO_EMERGENCIA = 30
+
 export default function DatosBasicos() {
   const { token } = useParams()
   const navigate = useNavigate()
@@ -184,11 +196,15 @@ export default function DatosBasicos() {
                     <input
                       type="text"
                       value={formData.nombre_completo}
-                      onChange={(e) => setFormData({...formData, nombre_completo: e.target.value})}
+                      onChange={(e) => setFormData({...formData, nombre_completo: e.target.value.slice(0, MAX_NOMBRE_COMPLETO)})}
                       required
+                      maxLength={MAX_NOMBRE_COMPLETO}
                       className="input-field"
                       placeholder="Nombre y apellidos completos"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.nombre_completo.length}/{MAX_NOMBRE_COMPLETO} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -217,10 +233,14 @@ export default function DatosBasicos() {
                     <input
                       type="text"
                       value={formData.numero_documento}
-                      onChange={(e) => setFormData({...formData, numero_documento: e.target.value})}
+                      onChange={(e) => setFormData({...formData, numero_documento: e.target.value.slice(0, MAX_NUMERO_DOCUMENTO)})}
                       required
+                      maxLength={MAX_NUMERO_DOCUMENTO}
                       className="input-field"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.numero_documento.length}/{MAX_NUMERO_DOCUMENTO} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -244,10 +264,14 @@ export default function DatosBasicos() {
                     <input
                       type="tel"
                       value={formData.numero_celular}
-                      onChange={(e) => setFormData({...formData, numero_celular: e.target.value})}
+                      onChange={(e) => setFormData({...formData, numero_celular: e.target.value.slice(0, MAX_NUMERO_CELULAR)})}
                       required
+                      maxLength={MAX_NUMERO_CELULAR}
                       className="input-field"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.numero_celular.length}/{MAX_NUMERO_CELULAR} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -344,11 +368,15 @@ export default function DatosBasicos() {
                     <input
                       type="text"
                       value={formData.direccion_residencial}
-                      onChange={(e) => setFormData({...formData, direccion_residencial: e.target.value})}
+                      onChange={(e) => setFormData({...formData, direccion_residencial: e.target.value.slice(0, MAX_DIRECCION_RESIDENCIAL)})}
                       required
+                      maxLength={MAX_DIRECCION_RESIDENCIAL}
                       className="input-field"
                       placeholder="Dirección completa"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.direccion_residencial.length}/{MAX_DIRECCION_RESIDENCIAL} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -358,10 +386,14 @@ export default function DatosBasicos() {
                     <input
                       type="text"
                       value={formData.barrio}
-                      onChange={(e) => setFormData({...formData, barrio: e.target.value})}
+                      onChange={(e) => setFormData({...formData, barrio: e.target.value.slice(0, MAX_BARRIO)})}
                       required
+                      maxLength={MAX_BARRIO}
                       className="input-field"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.barrio.length}/{MAX_BARRIO} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -438,11 +470,15 @@ export default function DatosBasicos() {
                     <input
                       type="text"
                       value={formData.nombre_emergencia}
-                      onChange={(e) => setFormData({...formData, nombre_emergencia: e.target.value})}
+                      onChange={(e) => setFormData({...formData, nombre_emergencia: e.target.value.slice(0, MAX_NOMBRE_EMERGENCIA)})}
                       required
+                      maxLength={MAX_NOMBRE_EMERGENCIA}
                       className="input-field"
                       placeholder="Nombre de contacto de emergencia"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.nombre_emergencia.length}/{MAX_NOMBRE_EMERGENCIA} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -452,11 +488,15 @@ export default function DatosBasicos() {
                     <input
                       type="tel"
                       value={formData.numero_emergencia}
-                      onChange={(e) => setFormData({...formData, numero_emergencia: e.target.value})}
+                      onChange={(e) => setFormData({...formData, numero_emergencia: e.target.value.slice(0, MAX_NUMERO_EMERGENCIA)})}
                       required
+                      maxLength={MAX_NUMERO_EMERGENCIA}
                       className="input-field"
                       placeholder="Ej: 3001234567"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.numero_emergencia.length}/{MAX_NUMERO_EMERGENCIA} caracteres
+                    </p>
                   </div>
                 </div>
               </div>

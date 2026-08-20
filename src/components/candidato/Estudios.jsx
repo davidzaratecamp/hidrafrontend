@@ -7,9 +7,20 @@ import ApiService from '../../services/api'
 // filas fijas, no un nivel único como antes. Bachillerato, Técnico/Tecnólogo y
 // Profesional u Otros son opcionales pero completos si se llenan (institución + título
 // + año, validado en el backend). Conocimientos Informáticos es distinto (2026-08-18,
-// decisión del usuario): texto libre, máx. 500 caracteres, sin institución/título/año.
+// decisión del usuario): texto libre, sin institución/título/año.
 const NIVEL_TEXTO_LIBRE = 'conocimientos_informaticos'
-const MAX_DESCRIPCION = 500
+// Límites calculados contra el ancho REAL de cada celda de la tabla "INFORMACIÓN ACADEMICA" en
+// hojavida.pdf (hojaVidaPdfService.js detecta esos bordes dinámicamente por escaneo de trazos
+// vectoriales — ver getTableBorders/getRowColumnBorders en utils/pdfFillHelpers.js). El cálculo
+// reutiliza la lógica real de ajuste de texto (fitSingleLine) con texto representativo en
+// español y 10% de margen de seguridad: es la cantidad máxima que esa celda puede mostrar sin
+// truncarse, no un número arbitrario. Institución/Título son una sola línea (drawFit, no
+// drawTextBox) porque el espacio entre filas de la tabla es de ~19pt, insuficiente para
+// envolver texto sin pisar la fila siguiente — igual que Conocimientos Informáticos (celda
+// fusionada, mucho más ancha).
+const MAX_INSTITUCION = 47
+const MAX_TITULO = 52
+const MAX_DESCRIPCION = 130
 
 const NIVELES = [
   { value: 'bachillerato', label: 'Bachillerato' },
@@ -205,10 +216,14 @@ export default function Estudios() {
                               <input
                                 type="text"
                                 value={fila.nombre_institucion}
-                                onChange={(e) => actualizarFila(nivel.value, 'nombre_institucion', e.target.value)}
+                                onChange={(e) => actualizarFila(nivel.value, 'nombre_institucion', e.target.value.slice(0, MAX_INSTITUCION))}
                                 className="input-field"
+                                maxLength={MAX_INSTITUCION}
                                 placeholder="Nombre de la institución"
                               />
+                              <p className="text-xs text-gray-500 mt-1 text-right">
+                                {fila.nombre_institucion.length}/{MAX_INSTITUCION} caracteres
+                              </p>
                             </div>
 
                             <div>
@@ -218,10 +233,14 @@ export default function Estudios() {
                               <input
                                 type="text"
                                 value={fila.titulo_obtenido}
-                                onChange={(e) => actualizarFila(nivel.value, 'titulo_obtenido', e.target.value)}
+                                onChange={(e) => actualizarFila(nivel.value, 'titulo_obtenido', e.target.value.slice(0, MAX_TITULO))}
                                 className="input-field"
+                                maxLength={MAX_TITULO}
                                 placeholder="Título obtenido"
                               />
+                              <p className="text-xs text-gray-500 mt-1 text-right">
+                                {fila.titulo_obtenido.length}/{MAX_TITULO} caracteres
+                              </p>
                             </div>
 
                             <div>
