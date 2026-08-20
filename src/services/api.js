@@ -162,6 +162,33 @@ class ApiService {
     return this.get(`/candidato/perfil/${candidatoId}`);
   }
 
+  // Estado de firma en FirmaCloud (hoja de vida + tratamiento de datos) — Hydra no guarda copia
+  // de los documentos, esto consulta en vivo cada vez.
+  async getEstadoFirma(candidatoId) {
+    return this.get(`/candidato/firma-estado/${candidatoId}`);
+  }
+
+  // Descarga (proxy) uno de los 2 documentos firmados. `tipo` = 'cv' | 'tratamiento'. Mismo
+  // patrón que getPdfDesprendible: devuelve el blob directo, no pasa por this.get (que espera
+  // JSON).
+  async getDocumentoFirmadoBlob(candidatoId, tipo) {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/candidato/firma-documento/${candidatoId}/${tipo}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || `Error: ${response.status}`);
+    }
+    return response.blob();
+  }
+
   // Analytics
   async getEstadosEnTiempo() {
     return this.get('/candidato/analytics/estados-tiempo');

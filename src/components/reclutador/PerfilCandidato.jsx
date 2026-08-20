@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { 
-  ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase, 
-  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users, Edit3
+import {
+  ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase,
+  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users, Edit3,
+  FileSignature
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
@@ -35,8 +36,15 @@ export default function PerfilCandidato() {
   const [nuevaOleada, setNuevaOleada] = useState('')
   const [guardandoOperacion, setGuardandoOperacion] = useState(false)
 
+  // Documentos firmados (FirmaCloud) — Hydra no guarda copia, se consulta en vivo cada vez que
+  // se abre el perfil.
+  const [firmaEstado, setFirmaEstado] = useState(null)
+  const [cargandoFirma, setCargandoFirma] = useState(true)
+  const [abriendoDocumento, setAbriendoDocumento] = useState(null) // 'cv' | 'tratamiento' | null
+
   useEffect(() => {
     cargarPerfil()
+    cargarEstadoFirma()
   }, [candidatoId])
 
   const cargarPerfil = async () => {
@@ -50,6 +58,42 @@ export default function PerfilCandidato() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const cargarEstadoFirma = async () => {
+    try {
+      setCargandoFirma(true)
+      const estado = await ApiService.getEstadoFirma(candidatoId)
+      setFirmaEstado(estado)
+    } catch (error) {
+      console.error('Error cargando estado de firma:', error)
+      setFirmaEstado(null)
+    } finally {
+      setCargandoFirma(false)
+    }
+  }
+
+  // Abre el PDF firmado en una pestaña nueva (blob URL) en vez de forzar descarga — mismo
+  // patrón que usa FirmaCloud para "vista previa" de sus propios documentos.
+  const abrirDocumentoFirmado = async (tipo) => {
+    try {
+      setAbriendoDocumento(tipo)
+      const blob = await ApiService.getDocumentoFirmadoBlob(candidatoId, tipo)
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch (error) {
+      console.error('Error abriendo documento firmado:', error)
+      alert(error.message || 'No se pudo abrir el documento firmado')
+    } finally {
+      setAbriendoDocumento(null)
+    }
+  }
+
+  const FIRMA_ESTADO_LABELS = {
+    pending: 'Pendiente de firma',
+    viewed: 'Visto por el candidato',
+    signed: 'Firmado'
   }
 
   const generarPDF = () => {
@@ -1064,6 +1108,61 @@ export default function PerfilCandidato() {
                     {candidato.formulario_consentimiento_completado ? '✅' : '⏸️'} Consentimiento
                   </div>
                 </div>
+              </div>
+
+              {/* Documentos Firmados (FirmaCloud) */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileSignature className="h-5 w-5 mr-2 text-blue-600" />
+                  Documentos Firmados
+                </h3>
+
+                {cargandoFirma ? (
+                  <p className="text-sm text-gray-500">Consultando estado en FirmaCloud...</p>
+                ) : !firmaEstado?.enviado ? (
+                  <p className="text-sm text-gray-500">
+                    Este candidato todavía no llegó al paso de firma (Consentimiento) — no hay
+                    documentos que consultar en FirmaCloud.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Estado en FirmaCloud:</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        firmaEstado.status === 'signed' ? 'bg-green-100 text-green-800' :
+                        firmaEstado.status === 'viewed' ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {FIRMA_ESTADO_LABELS[firmaEstado.status] || firmaEstado.status}
+                      </span>
+                    </div>
+
+                    {firmaEstado.status === 'signed' ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => abrirDocumentoFirmado('cv')}
+                          disabled={abriendoDocumento === 'cv'}
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          {abriendoDocumento === 'cv' ? 'Abriendo...' : 'Hoja de vida firmada'}
+                        </button>
+                        <button
+                          onClick={() => abrirDocumentoFirmado('tratamiento')}
+                          disabled={abriendoDocumento === 'tratamiento'}
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          {abriendoDocumento === 'tratamiento' ? 'Abriendo...' : 'Tratamiento de datos firmado'}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        El candidato todavía no firmó — vuelve a revisar más tarde.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
