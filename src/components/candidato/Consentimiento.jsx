@@ -64,10 +64,18 @@ export default function Consentimiento() {
     
     try {
       setSaving(true)
-      await ApiService.actualizarConsentimiento(token, formData)
-      
+      const resultado = await ApiService.actualizarConsentimiento(token, formData)
+
+      // Si FirmaCloud recibió la hoja de vida + tratamiento de datos, se redirige directo a
+      // firmarlos en la misma sesión — sin depender de que el candidato revise su correo (el
+      // correo/WhatsApp se sigue enviando igual, como respaldo).
+      if (resultado?.firmacloudDispatch?.ok && resultado.firmacloudDispatch.firmarUrl) {
+        window.location.href = resultado.firmacloudDispatch.firmarUrl
+        return
+      }
+
       alert('¡Felicitaciones! Has completado todos los formularios exitosamente. El equipo de reclutamiento se pondrá en contacto contigo pronto.')
-      
+
       // Redirigir a una página de confirmación o cerrar
       window.close()
     } catch (error) {
