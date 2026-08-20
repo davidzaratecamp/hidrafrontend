@@ -3,6 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { User, Star, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
 import ApiService from '../../services/api'
 
+// Límites calculados contra el ancho/alto real de cada caja de texto de hojavida.pdf (página 2,
+// hojaVidaPdfService.js), reutilizando la lógica real de wrap (wrapLines) con texto
+// representativo en español y 5% de margen de seguridad (el wrap por palabras ya deja poco
+// margen de sobra respecto al cálculo teórico).
+const MAX_GENOGRAMA = 1952
+const MAX_FORTALEZAS = 933
+const MAX_ASPECTOS_MEJORAR = 629
+const MAX_COMPETENCIAS_LABORALES = 1216
+const MAX_METAS_CORTO = 50
+const MAX_METAS_MEDIANO = 44
+const MAX_METAS_LARGO = 50
+
 export default function Personal() {
   const { token } = useParams()
   const navigate = useNavigate()
@@ -157,12 +169,16 @@ export default function Personal() {
                 </p>
                 <textarea
                   value={formData.genograma}
-                  onChange={(e) => setFormData({...formData, genograma: e.target.value})}
+                  onChange={(e) => setFormData({...formData, genograma: e.target.value.slice(0, MAX_GENOGRAMA)})}
                   required
                   rows={3}
+                  maxLength={MAX_GENOGRAMA}
                   className="input-field"
                   placeholder="Describe con quién vives actualmente"
                 />
+                <p className="text-xs text-gray-500 mt-1 text-right">
+                  {formData.genograma.length}/{MAX_GENOGRAMA} caracteres
+                </p>
               </div>
 
               <div className="bg-green-50 rounded-lg p-4 sm:p-6">
@@ -178,40 +194,52 @@ export default function Personal() {
                     </label>
                     <textarea
                       value={formData.fortalezas}
-                      onChange={(e) => setFormData({...formData, fortalezas: e.target.value})}
+                      onChange={(e) => setFormData({...formData, fortalezas: e.target.value.slice(0, MAX_FORTALEZAS)})}
                       required
                       rows={3}
+                      maxLength={MAX_FORTALEZAS}
                       className="input-field"
                       placeholder="Describe tus principales fortalezas y cualidades positivas"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.fortalezas.length}/{MAX_FORTALEZAS} caracteres
+                    </p>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Aspectos a Mejorar *
                     </label>
                     <textarea
                       value={formData.aspectos_mejorar}
-                      onChange={(e) => setFormData({...formData, aspectos_mejorar: e.target.value})}
+                      onChange={(e) => setFormData({...formData, aspectos_mejorar: e.target.value.slice(0, MAX_ASPECTOS_MEJORAR)})}
                       required
                       rows={3}
+                      maxLength={MAX_ASPECTOS_MEJORAR}
                       className="input-field"
                       placeholder="¿En qué aspectos te gustaría mejorar o desarrollarte?"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.aspectos_mejorar.length}/{MAX_ASPECTOS_MEJORAR} caracteres
+                    </p>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Competencias Laborales *
                     </label>
                     <textarea
                       value={formData.competencias_laborales}
-                      onChange={(e) => setFormData({...formData, competencias_laborales: e.target.value})}
+                      onChange={(e) => setFormData({...formData, competencias_laborales: e.target.value.slice(0, MAX_COMPETENCIAS_LABORALES)})}
                       required
                       rows={3}
+                      maxLength={MAX_COMPETENCIAS_LABORALES}
                       className="input-field"
                       placeholder="Describe tus habilidades y competencias profesionales"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.competencias_laborales.length}/{MAX_COMPETENCIAS_LABORALES} caracteres
+                    </p>
                   </div>
                 </div>
               </div>
@@ -229,11 +257,16 @@ export default function Personal() {
                     </label>
                     <textarea
                       value={formData.metas_corto_plazo}
-                      onChange={(e) => setFormData({...formData, metas_corto_plazo: e.target.value})}
+                      onChange={(e) => setFormData({...formData, metas_corto_plazo: e.target.value.slice(0, MAX_METAS_CORTO)})}
                       required
-                      rows={3}
+                      rows={2}
+                      maxLength={MAX_METAS_CORTO}
                       className="input-field"
+                      placeholder="Frase corta"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.metas_corto_plazo.length}/{MAX_METAS_CORTO} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -242,11 +275,16 @@ export default function Personal() {
                     </label>
                     <textarea
                       value={formData.metas_mediano_plazo}
-                      onChange={(e) => setFormData({...formData, metas_mediano_plazo: e.target.value})}
+                      onChange={(e) => setFormData({...formData, metas_mediano_plazo: e.target.value.slice(0, MAX_METAS_MEDIANO)})}
                       required
-                      rows={3}
+                      rows={2}
+                      maxLength={MAX_METAS_MEDIANO}
                       className="input-field"
+                      placeholder="Frase corta"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.metas_mediano_plazo.length}/{MAX_METAS_MEDIANO} caracteres
+                    </p>
                   </div>
 
                   <div>
@@ -255,11 +293,16 @@ export default function Personal() {
                     </label>
                     <textarea
                       value={formData.metas_largo_plazo}
-                      onChange={(e) => setFormData({...formData, metas_largo_plazo: e.target.value})}
+                      onChange={(e) => setFormData({...formData, metas_largo_plazo: e.target.value.slice(0, MAX_METAS_LARGO)})}
                       required
-                      rows={3}
+                      rows={2}
+                      maxLength={MAX_METAS_LARGO}
                       className="input-field"
+                      placeholder="Frase corta"
                     />
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      {formData.metas_largo_plazo.length}/{MAX_METAS_LARGO} caracteres
+                    </p>
                   </div>
                 </div>
               </div>

@@ -3,6 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { FileText, User, Calendar, ArrowRight, CheckCircle } from 'lucide-react'
 import ApiService from '../../services/api'
 
+// La celda de aspiración salarial en hojavida.pdf (hojaVidaPdfService.js, x424/y659/maxWidth168)
+// tiene espacio de sobra para cualquier salario real — este tope es una salvaguarda práctica
+// (no un límite ajustado a la celda como en los demás campos), porque `maxLength` de HTML no
+// aplica de forma confiable a inputs type="number".
+const MAX_ASPIRACION_SALARIAL_DIGITS = 15
+
 export default function HojaVida() {
   const { token } = useParams()
   const navigate = useNavigate()
@@ -170,7 +176,7 @@ export default function HojaVida() {
                       min="0"
                       step="1000"
                       value={formData.aspiracion_salarial}
-                      onChange={(e) => setFormData({...formData, aspiracion_salarial: e.target.value})}
+                      onChange={(e) => setFormData({...formData, aspiracion_salarial: e.target.value.slice(0, MAX_ASPIRACION_SALARIAL_DIGITS)})}
                       required
                       className="input-field"
                       placeholder="Ej: 1800000"
