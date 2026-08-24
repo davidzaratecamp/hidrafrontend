@@ -8,15 +8,17 @@ const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 
 // Límites de caracteres calculados contra el ancho real de cada celda en hojavida.pdf
 // (services/hojaVidaPdfService.js), reutilizando la lógica real de ajuste de texto
-// (fitSingleLine) con texto representativo en español y 10% de margen de seguridad — no son
-// números arbitrarios, es la cantidad máxima que esa celda puede mostrar sin truncarse.
-const MAX_NOMBRE_COMPLETO = 81
-const MAX_NUMERO_DOCUMENTO = 21
-const MAX_NUMERO_CELULAR = 21
-const MAX_DIRECCION_RESIDENCIAL = 65
-const MAX_BARRIO = 26
-const MAX_NOMBRE_EMERGENCIA = 63
-const MAX_NUMERO_EMERGENCIA = 30
+// (fitSingleLine) con texto representativo en español — es la cantidad máxima que esa
+// celda puede mostrar A TAMAÑO ESTÁNDAR, sin encoger la letra ni truncarse. Recalculados
+// 2026-08-21 tras pasar la plantilla a Times New Roman y corregir la calibración de varias
+// celdas en hidrabackend/services/hojaVidaPdfService.js.
+const MAX_NOMBRE_COMPLETO = 64
+const MAX_NUMERO_DOCUMENTO = 20
+const MAX_NUMERO_CELULAR = 18
+const MAX_DIRECCION_RESIDENCIAL = 53
+const MAX_BARRIO = 21
+const MAX_NOMBRE_EMERGENCIA = 50
+const MAX_NUMERO_EMERGENCIA = 25
 
 export default function DatosBasicos() {
   const { token } = useParams()

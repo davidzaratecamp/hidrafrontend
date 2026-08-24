@@ -21,7 +21,6 @@ export default function EditarCandidato() {
     
     // Datos del proceso
     cliente: '',
-    oleada: '',
     cargo: '',
     fuente_reclutamiento: '',
     observaciones_llamada: '',
@@ -59,7 +58,6 @@ export default function EditarCandidato() {
         email_personal: candidatoInfo.email_personal || '',
         numero_celular: candidatoInfo.numero_celular || '',
         cliente: candidatoInfo.cliente || '',
-        oleada: candidatoInfo.oleada || '',
         cargo: candidatoInfo.cargo || '',
         fuente_reclutamiento: candidatoInfo.fuente_reclutamiento || '',
         observaciones_llamada: candidatoInfo.observaciones_llamada || '',
@@ -73,12 +71,6 @@ export default function EditarCandidato() {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Lógica condicional para mostrar/ocultar oleada
-  const mostrarOleada = () => {
-    const clientesConOleada = ['Claro', 'Obamacare', 'Majority']
-    return clientesConOleada.includes(formData.cliente)
   }
 
   // Obtener cargos según cliente seleccionado
@@ -140,12 +132,6 @@ export default function EditarCandidato() {
       return
     }
 
-    // Validar oleada si es requerida
-    if (mostrarOleada() && !formData.oleada) {
-      alert('Por favor completa el campo: oleada')
-      return
-    }
-    
     try {
       setSaving(true)
 
@@ -368,10 +354,10 @@ export default function EditarCandidato() {
                 </h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Cliente */}
+                  {/* Campaña (campo interno: cliente) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cliente *
+                      Campaña *
                     </label>
                     <select
                       value={formData.cliente}
@@ -383,7 +369,7 @@ export default function EditarCandidato() {
                       required
                       className="input-field"
                     >
-                      <option value="">Selecciona cliente</option>
+                      <option value="">Selecciona campaña</option>
                       {/* Incluir el valor actual si no está en el catálogo */}
                       {candidato?.cliente && !catalogos.clientes?.find(c => c.value === candidato.cliente) && (
                         <option value={candidato.cliente}>{candidato.cliente}</option>
@@ -398,31 +384,11 @@ export default function EditarCandidato() {
                         <>
                           <option value="Staff Operacional">Staff Operacional</option>
                           <option value="Staff Administrativo">Staff Administrativo</option>
-                          <option value="Claro">Claro</option>
                           <option value="Obamacare">Obamacare</option>
-                          <option value="Majority">Majority</option>
                         </>
                       )}
                     </select>
                   </div>
-                  
-                  {/* Oleada */}
-                  {mostrarOleada() && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Oleada *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.oleada}
-                        onChange={(e) => setFormData({...formData, oleada: e.target.value})}
-                        required={mostrarOleada()}
-                        className="input-field"
-                        placeholder="Q4-2024, Enero-2025..."
-                      />
-                    </div>
-                  )}
-                  
                   
                   {/* Cargo */}
                   <div className="sm:col-span-2">
@@ -437,7 +403,7 @@ export default function EditarCandidato() {
                       disabled={!formData.cliente}
                     >
                       <option value="">
-                        {formData.cliente ? 'Selecciona cargo' : 'Primero selecciona un cliente'}
+                        {formData.cliente ? 'Selecciona cargo' : 'Primero selecciona una campaña'}
                       </option>
                       {getCargosDisponibles().length > 0 && getCargosDisponibles().map((cargo) => (
                         <option key={cargo} value={cargo}>
@@ -471,7 +437,7 @@ export default function EditarCandidato() {
                         ))
                       ) : (
                         <>
-                          <option value="Portal Web">Portal Web</option>
+                          <option value="Computrabajo">Computrabajo</option>
                           <option value="LinkedIn">LinkedIn</option>
                           <option value="Referido Empleado">Referido Empleado</option>
                           <option value="Referido Externo">Referido Externo</option>

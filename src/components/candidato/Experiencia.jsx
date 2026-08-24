@@ -5,16 +5,20 @@ import ApiService from '../../services/api'
 
 // Límites calculados contra el ancho/alto real de cada celda de hojavida.pdf
 // (hojaVidaPdfService.js), reutilizando la lógica real de ajuste de texto
-// (fitSingleLine/wrapLines) con texto representativo en español — 10% de margen en campos de
-// una línea, 5% en cajas multilínea (el wrap por palabras ya deja menos margen de sobra).
-const MAX_NOMBRE_EMPRESA = 54
-const MAX_CARGO_DESEMPENADO = 24
-const MAX_SALARIO_DIGITS = 20
-const MAX_FUNCIONES = 518
+// (fitSingleLine/wrapLines) con texto representativo en español, A TAMAÑO ESTÁNDAR (sin
+// encoger la letra). Recalculados 2026-08-21 tras pasar la plantilla a Times New Roman y
+// corregir la calibración de varias celdas en hidrabackend/services/hojaVidaPdfService.js.
+// FUNCIONES bajó bastante (518->151): la celda impresa mide solo 21.6pt de alto y ya la
+// ocupa la etiqueta "FUNCIONES:" — no hay espacio para envolver a una 2da línea sin invadir
+// la fila de abajo, así que ahora se dibuja en una sola línea junto a la etiqueta.
+const MAX_NOMBRE_EMPRESA = 41
+const MAX_CARGO_DESEMPENADO = 19
+const MAX_SALARIO_DIGITS = 17
+const MAX_FUNCIONES = 151
 const MAX_MOTIVO_RETIRO = 27
-const MAX_CAMPANA_ASISTE = 102
+const MAX_CAMPANA_ASISTE = 86
 const MAX_TIEMPO_LABORADO_ASISTE = 24
-const MAX_MOTIVO_RETIRO_ASISTE = 34
+const MAX_MOTIVO_RETIRO_ASISTE = 35
 
 export default function Experiencia() {
   const { token } = useParams()
