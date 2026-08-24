@@ -13,14 +13,14 @@ const NIVEL_TEXTO_LIBRE = 'conocimientos_informaticos'
 // hojavida.pdf (hojaVidaPdfService.js detecta esos bordes dinámicamente por escaneo de trazos
 // vectoriales — ver getTableBorders/getRowColumnBorders en utils/pdfFillHelpers.js). El cálculo
 // reutiliza la lógica real de ajuste de texto (fitSingleLine) con texto representativo en
-// español y 10% de margen de seguridad: es la cantidad máxima que esa celda puede mostrar sin
-// truncarse, no un número arbitrario. Institución/Título son una sola línea (drawFit, no
-// drawTextBox) porque el espacio entre filas de la tabla es de ~19pt, insuficiente para
-// envolver texto sin pisar la fila siguiente — igual que Conocimientos Informáticos (celda
-// fusionada, mucho más ancha).
-const MAX_INSTITUCION = 47
-const MAX_TITULO = 52
-const MAX_DESCRIPCION = 130
+// español, A TAMAÑO ESTÁNDAR (sin encoger la letra): es la cantidad máxima que esa celda puede
+// mostrar sin truncarse. Institución/Título son una sola línea (drawFit, no drawTextBox) porque
+// el espacio entre filas de la tabla es de ~19pt, insuficiente para envolver texto sin pisar la
+// fila siguiente — igual que Conocimientos Informáticos (celda fusionada, mucho más ancha).
+// Recalculados 2026-08-21 tras pasar la plantilla a Times New Roman.
+const MAX_INSTITUCION = 40
+const MAX_TITULO = 43
+const MAX_DESCRIPCION = 112
 
 const NIVELES = [
   { value: 'bachillerato', label: 'Bachillerato' },

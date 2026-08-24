@@ -33,6 +33,14 @@ export default function ListaCandidatos() {
   const [mostrarContactosFallidos, setMostrarContactosFallidos] = useState(false)
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 })
+  // Modal "Citar a entrevista" (2026-08-21): antes "Marcar como Citado" cambiaba el estado sin
+  // pedir fecha/hora, lo que podía dejar estado='citado' con fecha_citacion_entrevista en NULL
+  // (candidato invisible para Selección, que filtra por esa fecha). Ahora se pide la fecha en el
+  // mismo paso, y el backend (actualizarFechaEntrevista) agenda la fecha y avanza el estado en una
+  // sola operación atómica.
+  const [candidatoACitar, setCandidatoACitar] = useState(null)
+  const [fechaHoraCita, setFechaHoraCita] = useState('')
+  const [guardandoCita, setGuardandoCita] = useState(false)
 
   const estadosConfig = {
     contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
@@ -115,20 +123,31 @@ export default function ListaCandidatos() {
     }
   }
 
-  const handleCambiarEstado = async (candidatoId, candidato, nuevoEstado, accion) => {
-    if (!confirm(`¿Está seguro de ${accion.toLowerCase()} a ${candidato.primer_nombre} ${candidato.primer_apellido}?`)) {
-      return;
+  const handleAbrirModalCitar = (candidato) => {
+    setCandidatoACitar(candidato)
+    setFechaHoraCita('')
+  }
+
+  const handleConfirmarCita = async () => {
+    if (!fechaHoraCita) {
+      alert('Selecciona la fecha y hora de la cita')
+      return
     }
-    
+
     try {
-      await ApiService.cambiarEstadoCandidato(candidatoId, nuevoEstado);
-      
-      alert(`${accion} exitosamente`);
-      cargarCandidatos();
-      cargarResumenEstados();
+      setGuardandoCita(true)
+      await ApiService.actualizarFechaEntrevista(candidatoACitar.id, fechaHoraCita)
+
+      alert('Candidato citado exitosamente')
+      setCandidatoACitar(null)
+      setFechaHoraCita('')
+      cargarCandidatos()
+      cargarResumenEstados()
     } catch (error) {
-      console.error('Error actualizando estado:', error);
-      alert(`Error al ${accion.toLowerCase()}`);
+      console.error('Error citando candidato:', error)
+      alert('Error al citar al candidato')
+    } finally {
+      setGuardandoCita(false)
     }
   }
 
@@ -153,7 +172,7 @@ export default function ListaCandidatos() {
     if (candidato.estado === 'contacto_exitoso') {
       return (
         <button
-          onClick={() => handleCambiarEstado(candidato.id, candidato, 'citado', 'Marcar como Citado')}
+          onClick={() => handleAbrirModalCitar(candidato)}
           className="flex items-center px-2 py-1 lg:px-3 lg:py-1 bg-purple-600 text-white rounded text-xs lg:text-sm hover:bg-purple-700 transition-colors"
         >
           <Calendar className="h-3 w-3 lg:h-4 lg:w-4 mr-1 flex-shrink-0" />
@@ -177,7 +196,7 @@ export default function ListaCandidatos() {
     if (candidato.estado === 'nuevo') {
       return (
         <button
-          onClick={() => handleCambiarEstado(candidato.id, candidato, 'citado', 'Marcar como Citado')}
+          onClick={() => handleAbrirModalCitar(candidato)}
           className="flex items-center px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
         >
           <Calendar className="h-4 w-4 mr-1" />
@@ -439,11 +458,6 @@ export default function ListaCandidatos() {
                           <Building className="h-4 w-4 mr-1 text-gray-400" />
                           {candidato.cliente}
                         </div>
-                        {candidato.oleada && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                            {candidato.oleada}
-                          </span>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{candidato.cargo}</div>
@@ -522,6 +536,49 @@ export default function ListaCandidatos() {
         </div>
         </div>
       </div>
+
+      {/* Modal "Citar a entrevista" */}
+      {candidatoACitar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <Calendar className="h-5 w-5 mr-2 text-purple-600" />
+                Citar a Entrevista - {candidatoACitar.primer_nombre} {candidatoACitar.primer_apellido}
+              </h3>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha y Hora de la Cita *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={fechaHoraCita}
+                  onChange={(e) => setFechaHoraCita(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleConfirmarCita}
+                  disabled={guardandoCita}
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {guardandoCita ? 'Guardando...' : 'Confirmar Cita'}
+                </button>
+                <button
+                  onClick={() => setCandidatoACitar(null)}
+                  disabled={guardandoCita}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase,
   GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users, Edit3,
-  FileSignature
+  FileSignature, Upload, Eye, X, XCircle
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
@@ -27,13 +27,25 @@ export default function PerfilCandidato() {
   const [fechaEntrevista, setFechaEntrevista] = useState('')
   const [editandoFecha, setEditandoFecha] = useState(false)
   const [guardandoFecha, setGuardandoFecha] = useState(false)
-  
-  // Estados para edición de operación y oleada (solo para psicólogos)
+
+  // Modal "Marcar como Citado" (2026-08-21): antes cambiaba el estado directo sin pedir fecha,
+  // lo que podía dejar estado='citado' con fecha_citacion_entrevista en NULL (candidato invisible
+  // para Selección). Ahora se pide la fecha en el mismo paso; el backend agenda la fecha y avanza
+  // el estado en una sola operación atómica (mismo fix que ListaCandidatos.jsx).
+  const [showCitarModal, setShowCitarModal] = useState(false)
+  const [fechaHoraCitar, setFechaHoraCitar] = useState('')
+  const [guardandoCitar, setGuardandoCitar] = useState(false)
+
+  // Modal "No Citado": alternativa a "Marcar como Citado" cuando el reclutador decide no
+  // avanzar al candidato a entrevista. Pide una observación obligatoria del porqué.
+  const [showNoCitadoModal, setShowNoCitadoModal] = useState(false)
+  const [motivoNoCitado, setMotivoNoCitado] = useState('')
+  const [guardandoNoCitado, setGuardandoNoCitado] = useState(false)
+
+  // Estados para edición de operación (solo para psicólogos)
   const [editandoOperacion, setEditandoOperacion] = useState(false)
   const [nuevaOperacion, setNuevaOperacion] = useState('')
   const [nuevaCampana, setNuevaCampana] = useState('')
-  const [oleadas, setOleadas] = useState([])
-  const [nuevaOleada, setNuevaOleada] = useState('')
   const [guardandoOperacion, setGuardandoOperacion] = useState(false)
 
   // Documentos firmados (FirmaCloud) — Hydra no guarda copia, se consulta en vivo cada vez que
@@ -41,6 +53,27 @@ export default function PerfilCandidato() {
   const [firmaEstado, setFirmaEstado] = useState(null)
   const [cargandoFirma, setCargandoFirma] = useState(true)
   const [abriendoDocumento, setAbriendoDocumento] = useState(null) // 'cv' | 'tratamiento' | null
+
+  // Antecedentes (ADRES/POL/COMP/PROCU) — solo aplica una vez el candidato asistió a la
+  // entrevista. Cada verificación es independiente y se auto-guarda apenas el reclutador decide
+  // algo (2026-08-21, reemplaza el formulario batch + botón único de antes): elegir "Aprobado"
+  // guarda directo; "No aprobado" abre un modal para escribir la novedad obligatoria; soltar o
+  // elegir un archivo en su caja se guarda aparte, sin depender del estado.
+  const CAMPOS_ANTECEDENTES = [
+    { key: 'adres', label: 'ADRES' },
+    { key: 'pol', label: 'POL' },
+    { key: 'comp', label: 'COMP' },
+    { key: 'procu', label: 'PROCU' }
+  ]
+  const [guardandoAntecedente, setGuardandoAntecedente] = useState({}) // { [key]: boolean }
+  const [dragOverAntecedente, setDragOverAntecedente] = useState(null) // key en drag-over, o null
+  const [abriendoAntecedente, setAbriendoAntecedente] = useState(null) // key abriendo, o null
+  const [modalNovedad, setModalNovedad] = useState(null) // { key, texto } o null
+  // Con documento ya cargado y estado "aprobado", la caja de carga se reemplaza por
+  // "Previsualizar"/"Volver a subir" — este flag vuelve a mostrarla temporalmente para el
+  // reemplazo (2026-08-21).
+  const [resubiendoAntecedente, setResubiendoAntecedente] = useState({}) // { [key]: boolean }
+  const [previewAntecedente, setPreviewAntecedente] = useState(null) // { key, url, esImagen, nombre } o null
 
   useEffect(() => {
     cargarPerfil()
@@ -58,6 +91,91 @@ export default function PerfilCandidato() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const guardarEstadoAntecedente = async (key, estado, novedad = null) => {
+    try {
+      setGuardandoAntecedente(prev => ({ ...prev, [key]: true }))
+      const formData = new FormData()
+      formData.append(key, estado)
+      if (estado === 'no_aprobado') formData.append(`${key}_novedad`, novedad)
+
+      await ApiService.actualizarAntecedentes(candidatoId, formData)
+      await cargarPerfil()
+    } catch (error) {
+      console.error(`Error guardando antecedente ${key}:`, error)
+      alert(error.message || 'Error al guardar el antecedente')
+    } finally {
+      setGuardandoAntecedente(prev => ({ ...prev, [key]: false }))
+    }
+  }
+
+  const guardarArchivoAntecedente = async (key, archivo) => {
+    try {
+      setGuardandoAntecedente(prev => ({ ...prev, [key]: true }))
+      const formData = new FormData()
+      formData.append(`documento_${key}`, archivo)
+
+      await ApiService.actualizarAntecedentes(candidatoId, formData)
+      await cargarPerfil()
+      // Termina el modo "Volver a subir" (si estaba activo) ahora que ya hay un archivo nuevo -
+      // vuelve a mostrarse como "Previsualizar"/"Volver a subir" con el archivo recién cargado.
+      setResubiendoAntecedente(prev => ({ ...prev, [key]: false }))
+    } catch (error) {
+      console.error(`Error subiendo documento de ${key}:`, error)
+      alert(error.message || 'Error al subir el documento')
+    } finally {
+      setGuardandoAntecedente(prev => ({ ...prev, [key]: false }))
+    }
+  }
+
+  const handleDropAntecedente = (key, e) => {
+    e.preventDefault()
+    setDragOverAntecedente(null)
+    const archivo = e.dataTransfer.files?.[0]
+    if (archivo) guardarArchivoAntecedente(key, archivo)
+  }
+
+  const handleSeleccionarArchivoAntecedente = (key, e) => {
+    const archivo = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir el mismo archivo si hay que reemplazarlo
+    if (archivo) guardarArchivoAntecedente(key, archivo)
+  }
+
+  // "Aprobado" guarda directo; "No aprobado" abre el modal de novedad en vez de guardar de una,
+  // porque el texto es obligatorio en ese caso (ver actualizarAntecedentes en el backend).
+  const abrirModalNoAprobado = (key) => {
+    setModalNovedad({ key, texto: candidato?.[`antecedentes_${key}_novedad`] || '' })
+  }
+
+  const confirmarNoAprobado = async () => {
+    if (!modalNovedad || !modalNovedad.texto.trim()) return
+    const { key, texto } = modalNovedad
+    setModalNovedad(null)
+    await guardarEstadoAntecedente(key, 'no_aprobado', texto.trim())
+  }
+
+  // Previsualiza el documento de una verificación puntual en un modal (blob URL) - PDF se
+  // embebe en un iframe, imágenes con <img>, según la extensión del nombre original guardado.
+  const abrirPreviewAntecedente = async (key) => {
+    try {
+      setAbriendoAntecedente(key)
+      const blob = await ApiService.getDocumentoAntecedentesBlob(candidatoId, key)
+      const url = URL.createObjectURL(blob)
+      const nombre = candidato?.[`antecedentes_${key}_documento_nombre`] || ''
+      const esImagen = /\.(jpe?g|png)$/i.test(nombre)
+      setPreviewAntecedente({ key, url, esImagen, nombre })
+    } catch (error) {
+      console.error('Error abriendo documento de antecedentes:', error)
+      alert(error.message || 'No se pudo abrir el documento de antecedentes')
+    } finally {
+      setAbriendoAntecedente(null)
+    }
+  }
+
+  const cerrarPreviewAntecedente = () => {
+    if (previewAntecedente) URL.revokeObjectURL(previewAntecedente.url)
+    setPreviewAntecedente(null)
   }
 
   const cargarEstadoFirma = async () => {
@@ -392,13 +510,11 @@ export default function PerfilCandidato() {
     try {
       setGuardandoFecha(true)
       await ApiService.actualizarFechaEntrevista(candidatoId, fechaEntrevista)
-      
-      // Actualizar el estado local del candidato
-      setCandidato(prev => ({
-        ...prev,
-        fecha_citacion_entrevista: fechaEntrevista
-      }))
-      
+
+      // Recarga el perfil completo (no solo parchea fecha_citacion_entrevista) porque el backend
+      // también puede haber avanzado el estado a "citado" en la misma operación.
+      await cargarPerfil()
+
       setEditandoFecha(false)
       alert('Fecha de entrevista actualizada exitosamente')
     } catch (error) {
@@ -414,32 +530,11 @@ export default function PerfilCandidato() {
     setEditandoFecha(false)
   }
 
-  // Funciones para psicólogos - gestión de operación y oleada
-  const cargarOleadas = async () => {
-    try {
-      const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/seleccion/oleadas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setOleadas(data.oleadas)
-      }
-    } catch (error) {
-      console.error('Error cargando oleadas:', error)
-    }
-  }
-
+  // Funciones para psicólogos - gestión de operación
   const iniciarEdicionOperacion = () => {
     setNuevaOperacion(candidato.cliente || '')
     setNuevaCampana(candidato.cargo || '')
     setEditandoOperacion(true)
-    cargarOleadas()
   }
 
   const actualizarOperacionCampana = async () => {
@@ -485,44 +580,10 @@ export default function PerfilCandidato() {
     }
   }
 
-  const asignarOleada = async () => {
-    if (!nuevaOleada) {
-      alert('Selecciona una oleada')
-      return
-    }
-
-    try {
-      const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
-      const token = localStorage.getItem('token')
-      
-      const response = await fetch(`${API_URL}/api/seleccion/candidatos/${candidatoId}/oleada`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ oleadaId: nuevaOleada })
-      })
-
-      if (response.ok) {
-        // Recargar perfil para obtener información actualizada de oleada
-        cargarPerfil()
-        alert('Candidato asignado a oleada correctamente')
-      } else {
-        const error = await response.json()
-        alert('Error: ' + error.error)
-      }
-    } catch (error) {
-      console.error('Error asignando oleada:', error)
-      alert('Error al asignar oleada')
-    }
-  }
-
   const cancelarEdicionOperacion = () => {
     setEditandoOperacion(false)
     setNuevaOperacion('')
     setNuevaCampana('')
-    setNuevaOleada('')
   }
 
   const getCargosDisponibles = () => {
@@ -575,38 +636,58 @@ export default function PerfilCandidato() {
     return cargosPorOperacion[nuevaOperacion] || []
   }
 
-  const getOleadasDisponibles = () => {
-    if (!nuevaOperacion || !nuevaCampana) return []
-    
-    return oleadas.filter(oleada => 
-      oleada.operacion === nuevaOperacion && oleada.campana === nuevaCampana
-    )
-  }
-
-  const cambiarEstado = async (nuevoEstado, mensaje) => {
-    if (!confirm(mensaje)) {
-      return;
-    }
-    
-    try {
-      console.log('Cambiando estado a:', nuevoEstado);
-      await ApiService.cambiarEstadoCandidato(candidatoId, nuevoEstado);
-      
-      // Actualizar el estado local
-      setCandidato(prev => ({
-        ...prev,
-        estado: nuevoEstado
-      }));
-      
-      alert(`Candidato marcado como "${getEstadoLabel(nuevoEstado)}" exitosamente`);
-    } catch (error) {
-      console.error('Error actualizando estado:', error);
-      alert('Error al actualizar el estado');
-    }
-  }
-
   const marcarCitado = () => {
-    cambiarEstado('citado', '¿Está seguro de marcar este candidato como "Citado"?');
+    setFechaHoraCitar('')
+    setShowCitarModal(true)
+  }
+
+  const confirmarCitarModal = async () => {
+    if (!fechaHoraCitar) {
+      alert('Selecciona la fecha y hora de la cita')
+      return
+    }
+
+    try {
+      setGuardandoCitar(true)
+      await ApiService.actualizarFechaEntrevista(candidatoId, fechaHoraCitar)
+
+      // Recarga el perfil completo: el backend fija fecha_citacion_entrevista y avanza el
+      // estado a "citado" en la misma operación.
+      await cargarPerfil()
+
+      setShowCitarModal(false)
+      alert('Candidato citado exitosamente')
+    } catch (error) {
+      console.error('Error citando candidato:', error)
+      alert('Error al citar al candidato')
+    } finally {
+      setGuardandoCitar(false)
+    }
+  }
+
+  const abrirModalNoCitado = () => {
+    setMotivoNoCitado('')
+    setShowNoCitadoModal(true)
+  }
+
+  const confirmarNoCitado = async () => {
+    if (!motivoNoCitado.trim()) {
+      alert('Escribe el motivo por el cual no se citó al candidato')
+      return
+    }
+
+    try {
+      setGuardandoNoCitado(true)
+      await ApiService.marcarNoCitado(candidatoId, motivoNoCitado.trim())
+      await cargarPerfil()
+      setShowNoCitadoModal(false)
+      alert('Candidato marcado como no citado')
+    } catch (error) {
+      console.error('Error marcando no citado:', error)
+      alert('Error al marcar al candidato como no citado')
+    } finally {
+      setGuardandoNoCitado(false)
+    }
   }
 
   const getEstadoLabel = (estado) => {
@@ -1025,36 +1106,25 @@ export default function PerfilCandidato() {
 
                   {/* Botones de acción según el estado */}
                   <div className="flex flex-wrap gap-2">
-                    {candidato.estado === 'nuevo' && (
-                      <button
-                        onClick={marcarCitado}
-                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Marcar como Citado
-                      </button>
+                    {['nuevo', 'contacto_exitoso', 'formularios_completados'].includes(candidato.estado) && (
+                      <>
+                        <button
+                          onClick={marcarCitado}
+                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Marcar como Citado
+                        </button>
+                        <button
+                          onClick={abrirModalNoCitado}
+                          className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200 transition-colors"
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          No Citado
+                        </button>
+                      </>
                     )}
 
-                    {candidato.estado === 'contacto_exitoso' && (
-                      <button
-                        onClick={marcarCitado}
-                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Marcar como Citado
-                      </button>
-                    )}
-
-                    {candidato.estado === 'formularios_completados' && (
-                      <button
-                        onClick={marcarCitado}
-                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Marcar como Citado
-                      </button>
-                    )}
-                    
                     {candidato.estado === 'citado' && (
                       <div className="text-sm text-gray-600 italic p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="flex items-center">
@@ -1073,6 +1143,12 @@ export default function PerfilCandidato() {
                       </div>
                     )}
                     
+                    {candidato.estado === 'rechazado' && candidato.motivo_no_citado && (
+                      <div className="text-sm text-red-700 p-3 bg-red-50 rounded-lg border border-red-200 w-full">
+                        <span className="font-medium">Motivo de no citación:</span> {candidato.motivo_no_citado}
+                      </div>
+                    )}
+
                     {(candidato.estado === 'no_asistio' || candidato.estado === 'aprobado' || candidato.estado === 'rechazado') && (
                       <div className="text-sm text-gray-600 italic p-2 bg-gray-50 rounded">
                         No hay más acciones disponibles para este estado.
@@ -1164,12 +1240,242 @@ export default function PerfilCandidato() {
                   </div>
                 )}
               </div>
+
+              {/* Antecedentes (ADRES/POL/COMP/PROCU) - solo si el candidato asistió. Cada una es
+                  una tarjeta independiente que se auto-guarda: "Aprobado" guarda directo, "No
+                  aprobado" abre el modal de novedad, y la caja de abajo sube su propio documento
+                  (clic o arrastrar y soltar) sin depender de las demás. */}
+              {candidato.asistio_citacion === 'asistio' && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-teal-600" />
+                    Antecedentes
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {CAMPOS_ANTECEDENTES.map(({ key, label }) => {
+                      const estado = candidato[`antecedentes_${key}`]
+                      const novedad = candidato[`antecedentes_${key}_novedad`]
+                      const documento = candidato[`antecedentes_${key}_documento`]
+                      const documentoNombre = candidato[`antecedentes_${key}_documento_nombre`]
+                      const guardando = !!guardandoAntecedente[key]
+                      // No aprobado: la caja de carga desaparece, solo se ve la novedad — vuelve
+                      // a aparecer si se marca Aprobado de nuevo. Aprobado con documento ya
+                      // cargado: la caja también se oculta, reemplazada por
+                      // "Previsualizar"/"Volver a subir", salvo que el reclutador haya pedido
+                      // resubir explícitamente.
+                      const mostrarCajaCarga = estado !== 'no_aprobado' && (!documento || resubiendoAntecedente[key])
+                      const mostrarAccionesDocumento = estado !== 'no_aprobado' && documento && !resubiendoAntecedente[key]
+
+                      return (
+                        <div key={key} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-semibold text-gray-900">{label}</span>
+                            {estado === 'aprobado' && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                Aprobado
+                              </span>
+                            )}
+                            {estado === 'no_aprobado' && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                                No aprobado
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 mb-3">
+                            <button
+                              onClick={() => guardarEstadoAntecedente(key, 'aprobado')}
+                              disabled={guardando}
+                              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-50 ${
+                                estado === 'aprobado'
+                                  ? 'bg-green-600 text-white border-green-600'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
+                              }`}
+                            >
+                              Aprobado
+                            </button>
+                            <button
+                              onClick={() => abrirModalNoAprobado(key)}
+                              disabled={guardando}
+                              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-50 ${
+                                estado === 'no_aprobado'
+                                  ? 'bg-red-600 text-white border-red-600'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:border-red-400'
+                              }`}
+                            >
+                              No aprobado
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                          {estado === 'no_aprobado' && novedad && (
+                            <p className="text-xs text-red-700 bg-red-50 rounded-lg p-2">
+                              <span className="font-medium">Novedad: </span>{novedad}
+                            </p>
+                          )}
+
+                          {mostrarCajaCarga && (
+                            <>
+                              <label
+                                htmlFor={`antecedente-archivo-${key}`}
+                                onDragOver={(e) => { e.preventDefault(); setDragOverAntecedente(key) }}
+                                onDragLeave={() => setDragOverAntecedente(null)}
+                                onDrop={(e) => handleDropAntecedente(key, e)}
+                                className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                                  dragOverAntecedente === key
+                                    ? 'border-teal-500 bg-teal-50'
+                                    : 'border-gray-300 hover:border-teal-400'
+                                } ${guardando ? 'opacity-50 pointer-events-none' : ''}`}
+                              >
+                                <Upload className="h-5 w-5 text-gray-400 mb-1" />
+                                <span className="text-xs text-gray-500">
+                                  Arrastra un PDF o imagen aquí, o haz clic para elegir
+                                </span>
+                                <input
+                                  id={`antecedente-archivo-${key}`}
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  className="hidden"
+                                  disabled={guardando}
+                                  onChange={(e) => handleSeleccionarArchivoAntecedente(key, e)}
+                                />
+                              </label>
+
+                              {documentoNombre && (
+                                <p className="text-xs text-gray-500 mt-1 truncate">
+                                  Archivo actual: {documentoNombre}
+                                </p>
+                              )}
+
+                              {resubiendoAntecedente[key] && (
+                                <button
+                                  onClick={() => setResubiendoAntecedente(prev => ({ ...prev, [key]: false }))}
+                                  disabled={guardando}
+                                  className="text-xs text-gray-500 hover:underline mt-1 disabled:opacity-50"
+                                >
+                                  Cancelar
+                                </button>
+                              )}
+                            </>
+                          )}
+
+                          {mostrarAccionesDocumento && (
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => abrirPreviewAntecedente(key)}
+                                disabled={abriendoAntecedente === key}
+                                className="flex items-center text-xs text-teal-700 hover:underline disabled:opacity-50"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                {abriendoAntecedente === key ? 'Abriendo...' : 'Previsualizar'}
+                              </button>
+                              <button
+                                onClick={() => setResubiendoAntecedente(prev => ({ ...prev, [key]: true }))}
+                                className="flex items-center text-xs text-gray-600 hover:underline"
+                              >
+                                <Upload className="h-3 w-3 mr-1" />
+                                Volver a subir
+                              </button>
+                            </div>
+                          )}
+
+                          {guardando && <span className="text-xs text-teal-600 block">Guardando...</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal de edición de operación y oleada para psicólogos */}
+      {/* Modal de previsualización de documento de antecedentes: PDF se embebe en un iframe,
+          imágenes con <img>, según la extensión del nombre original. */}
+      {previewAntecedente && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={cerrarPreviewAntecedente}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900 truncate pr-4">
+                {previewAntecedente.nombre}
+              </h3>
+              <button
+                onClick={cerrarPreviewAntecedente}
+                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-50 p-2">
+              {previewAntecedente.esImagen ? (
+                <img
+                  src={previewAntecedente.url}
+                  alt={previewAntecedente.nombre}
+                  className="max-w-full mx-auto"
+                />
+              ) : (
+                <iframe
+                  src={previewAntecedente.url}
+                  title={previewAntecedente.nombre}
+                  className="w-full h-[75vh] border-0"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de novedad de antecedentes: se abre al marcar "No aprobado" en cualquiera de las
+          4 verificaciones — el texto es obligatorio antes de poder guardar (ver
+          confirmarNoAprobado / actualizarAntecedentes en el backend). */}
+      {modalNovedad && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Novedad de {CAMPOS_ANTECEDENTES.find(c => c.key === modalNovedad.key)?.label}
+              </h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Explica por qué no se aprobó esta verificación.
+              </p>
+              <textarea
+                value={modalNovedad.texto}
+                onChange={(e) => setModalNovedad(prev => ({ ...prev, texto: e.target.value }))}
+                rows={4}
+                autoFocus
+                placeholder="Ej: antecedente judicial vigente por..."
+                className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => setModalNovedad(null)}
+                  className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarNoAprobado}
+                  disabled={!modalNovedad.texto.trim()}
+                  className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edición de operación para psicólogos */}
       {editandoOperacion && user?.rol === 'seleccion' && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
@@ -1218,26 +1524,6 @@ export default function PerfilCandidato() {
                     ))}
                   </select>
                 </div>
-
-                {/* Oleada */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Oleada
-                  </label>
-                  <select
-                    value={nuevaOleada}
-                    onChange={(e) => setNuevaOleada(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    disabled={!nuevaOperacion || !nuevaCampana}
-                  >
-                    <option value="">Selecciona oleada</option>
-                    {getOleadasDisponibles().map(oleada => (
-                      <option key={oleada.id} value={oleada.id}>
-                        Oleada {oleada.numero_oleada} - {oleada.descripcion}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
               <div className="flex space-x-3 mt-6">
@@ -1260,24 +1546,99 @@ export default function PerfilCandidato() {
                 </button>
               </div>
 
-              {nuevaOleada && (
-                <div className="flex space-x-3 mt-3">
-                  <button
-                    onClick={asignarOleada}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Asignar a Oleada
-                  </button>
-                </div>
-              )}
-
               <button
                 onClick={cancelarEdicionOperacion}
                 className="w-full mt-3 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
               >
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal "Marcar como Citado": pide fecha/hora antes de citar (2026-08-21) */}
+      {showCitarModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <Calendar className="h-5 w-5 mr-2 text-purple-600" />
+                Citar a Entrevista - {candidato?.primer_nombre} {candidato?.primer_apellido}
+              </h3>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha y Hora de la Cita *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={fechaHoraCitar}
+                  onChange={(e) => setFechaHoraCitar(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={confirmarCitarModal}
+                  disabled={guardandoCitar}
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {guardandoCitar ? 'Guardando...' : 'Confirmar Cita'}
+                </button>
+                <button
+                  onClick={() => setShowCitarModal(false)}
+                  disabled={guardandoCitar}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal "No Citado": pide el motivo por el cual no se citó al candidato */}
+      {showNoCitadoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <XCircle className="h-5 w-5 mr-2 text-red-600" />
+                Marcar como No Citado
+              </h3>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo *
+                </label>
+                <textarea
+                  value={motivoNoCitado}
+                  onChange={(e) => setMotivoNoCitado(e.target.value)}
+                  rows={4}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Explica por qué no se citó al candidato..."
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={confirmarNoCitado}
+                  disabled={guardandoNoCitado || !motivoNoCitado.trim()}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {guardandoNoCitado ? 'Guardando...' : 'Confirmar'}
+                </button>
+                <button
+                  onClick={() => setShowNoCitadoModal(false)}
+                  disabled={guardandoNoCitado}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         </div>

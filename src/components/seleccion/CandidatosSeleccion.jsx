@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Users, UserCheck, UserX, Calendar, Briefcase, 
-  Clock, CheckCircle, XCircle, Eye, Edit3, UserPlus, FileText,
-  Filter, Search, RefreshCw, BarChart3, Calculator, Gavel
+import {
+  Users, UserCheck, UserX, Calendar, Briefcase,
+  Clock, CheckCircle, XCircle, Eye, UserPlus, FileText,
+  Filter, Search, RefreshCw, BarChart3, Calculator, Gavel,
+  ChevronLeft, ChevronRight
 } from 'lucide-react'
 import SidebarSeleccion from './SidebarSeleccion'
 import EvaluacionEntrevista from './EvaluacionEntrevista'
@@ -13,17 +14,21 @@ export default function CandidatosSeleccion() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [candidatos, setCandidatos] = useState([])
-  const [oleadas, setOleadas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 })
+  const [filtrosDisponibles, setFiltrosDisponibles] = useState({ operaciones: [] })
   const [filtros, setFiltros] = useState({
     buscar: '',
     operacion: '',
     asistencia: '',
     estado: ''
   })
+  // Texto de búsqueda tras el debounce (300ms) - separado de filtros.buscar para no disparar
+  // un fetch en cada tecla (mismo patrón que ListaCandidatos.jsx/CandidatosTotal.jsx).
+  const [busquedaActiva, setBusquedaActiva] = useState('')
   const [selectedCandidato, setSelectedCandidato] = useState(null)
   const [showAsistenciaModal, setShowAsistenciaModal] = useState(false)
-  const [showOleadaModal, setShowOleadaModal] = useState(false)
   const [showEvaluacionModal, setShowEvaluacionModal] = useState(false)
   const [showDecisionFinalModal, setShowDecisionFinalModal] = useState(false)
   const [estadisticas, setEstadisticas] = useState(null)
@@ -31,15 +36,39 @@ export default function CandidatosSeleccion() {
   const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
 
   useEffect(() => {
-    cargarDatos()
+    cargarEstadisticas()
   }, [])
+
+  // Paginado + filtros/búsqueda server-side (2026-08-21): antes traía TODOS los candidatos
+  // citados (1984 en local) y filtraba en el frontend. Mismo patrón que CandidatosTotal.jsx.
+  useEffect(() => {
+    cargarCandidatosCitados()
+  }, [page, busquedaActiva, filtros.operacion, filtros.asistencia, filtros.estado])
+
+  // Debounce del buscador (300ms) - vuelve a página 1 en el mismo batch en que se activa la
+  // búsqueda (un solo fetch, no dos).
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setBusquedaActiva(filtros.buscar.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(timeoutId)
+  }, [filtros.buscar])
+
+  // Cambia un filtro (select) y vuelve a página 1 en el mismo batch, salvo "buscar" que ya
+  // lo maneja el debounce de arriba.
+  const actualizarFiltro = (campo, valor) => {
+    setFiltros(prev => ({ ...prev, [campo]: valor }))
+    if (campo !== 'buscar') {
+      setPage(1)
+    }
+  }
 
   const cargarDatos = async () => {
     setLoading(true)
     try {
       await Promise.all([
         cargarCandidatosCitados(),
-        cargarOleadas(),
         cargarEstadisticas()
       ])
     } catch (error) {
@@ -50,9 +79,16 @@ export default function CandidatosSeleccion() {
   }
 
   const cargarCandidatosCitados = async () => {
+    setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/seleccion/candidatos-citados`, {
+      const params = new URLSearchParams({ page })
+      if (busquedaActiva) params.set('search', busquedaActiva)
+      if (filtros.operacion) params.set('operacion', filtros.operacion)
+      if (filtros.asistencia) params.set('asistencia', filtros.asistencia)
+      if (filtros.estado) params.set('estado', filtros.estado)
+
+      const response = await fetch(`${API_URL}/api/seleccion/candidatos-citados?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -62,32 +98,13 @@ export default function CandidatosSeleccion() {
       if (response.ok) {
         const data = await response.json()
         setCandidatos(data.candidatos)
+        setPagination(data.pagination)
+        setFiltrosDisponibles(data.filtrosDisponibles)
       }
     } catch (error) {
       console.error('Error cargando candidatos citados:', error)
-    }
-  }
-
-  const cargarOleadas = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/seleccion/oleadas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Oleadas cargadas desde backend:', data)
-        // Solo cargar oleadas activas (el backend maneja restricciones de oleadas pasadas)
-        setOleadas(data.oleadas)
-      } else {
-        console.log('Error cargando oleadas, status:', response.status)
-      }
-    } catch (error) {
-      console.error('Error cargando oleadas:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -110,7 +127,7 @@ export default function CandidatosSeleccion() {
     }
   }
 
-  const marcarAsistencia = async (candidatoId, asistio, observaciones = '') => {
+  const marcarAsistencia = async (candidatoId, asistio, observaciones = '', motivoInasistencia = null) => {
     try {
       const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/seleccion/candidatos/${candidatoId}/asistencia`, {
@@ -119,7 +136,7 @@ export default function CandidatosSeleccion() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ asistio, observaciones })
+        body: JSON.stringify({ asistio, observaciones, motivoInasistencia })
       })
 
       if (response.ok) {
@@ -134,32 +151,6 @@ export default function CandidatosSeleccion() {
     } catch (error) {
       console.error('Error marcando asistencia:', error)
       alert('Error al marcar asistencia')
-    }
-  }
-
-  const asignarOleada = async (candidatoId, numeroOleada) => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${API_URL}/api/seleccion/candidatos/${candidatoId}/oleada`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ numeroOleada })
-      })
-
-      if (response.ok) {
-        await cargarCandidatosCitados()
-        setShowOleadaModal(false)
-        setSelectedCandidato(null)
-      } else {
-        const error = await response.json()
-        alert('Error: ' + error.error)
-      }
-    } catch (error) {
-      console.error('Error asignando oleada:', error)
-      alert('Error al asignar oleada')
     }
   }
 
@@ -222,24 +213,6 @@ export default function CandidatosSeleccion() {
     }
   }
 
-
-  const candidatosFiltrados = candidatos.filter(candidato => {
-    const matchBuscar = !filtros.buscar || 
-      `${candidato.primer_nombre} ${candidato.primer_apellido}`.toLowerCase().includes(filtros.buscar.toLowerCase()) ||
-      candidato.email_personal?.toLowerCase().includes(filtros.buscar.toLowerCase()) ||
-      candidato.numero_celular?.includes(filtros.buscar)
-
-    const matchOperacion = !filtros.operacion || candidato.cliente === filtros.operacion
-    const matchAsistencia = !filtros.asistencia || candidato.asistio_citacion === filtros.asistencia
-    const matchEstado = !filtros.estado || candidato.estado === filtros.estado
-
-    return matchBuscar && matchOperacion && matchAsistencia && matchEstado
-  })
-
-  const getOperacionesUnicas = () => {
-    const operaciones = [...new Set(candidatos.map(c => c.cliente))]
-    return operaciones.filter(op => op)
-  }
 
   const formatearFecha = (fecha) => {
     if (!fecha) return '-'
@@ -406,7 +379,7 @@ export default function CandidatosSeleccion() {
                     type="text"
                     placeholder="Nombre, email o teléfono..."
                     value={filtros.buscar}
-                    onChange={(e) => setFiltros({...filtros, buscar: e.target.value})}
+                    onChange={(e) => actualizarFiltro('buscar', e.target.value)}
                     className="pl-10 input-field"
                   />
                 </div>
@@ -416,11 +389,11 @@ export default function CandidatosSeleccion() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Operación</label>
                 <select
                   value={filtros.operacion}
-                  onChange={(e) => setFiltros({...filtros, operacion: e.target.value})}
+                  onChange={(e) => actualizarFiltro('operacion', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todas las operaciones</option>
-                  {getOperacionesUnicas().map(operacion => (
+                  {filtrosDisponibles.operaciones.map(operacion => (
                     <option key={operacion} value={operacion}>{operacion}</option>
                   ))}
                 </select>
@@ -430,7 +403,7 @@ export default function CandidatosSeleccion() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Asistencia</label>
                 <select
                   value={filtros.asistencia}
-                  onChange={(e) => setFiltros({...filtros, asistencia: e.target.value})}
+                  onChange={(e) => actualizarFiltro('asistencia', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todas</option>
@@ -444,7 +417,7 @@ export default function CandidatosSeleccion() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
                 <select
                   value={filtros.estado}
-                  onChange={(e) => setFiltros({...filtros, estado: e.target.value})}
+                  onChange={(e) => actualizarFiltro('estado', e.target.value)}
                   className="input-field"
                 >
                   <option value="">Todos</option>
@@ -461,11 +434,11 @@ export default function CandidatosSeleccion() {
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="p-4 lg:p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                Candidatos ({candidatosFiltrados.length})
+                Candidatos ({pagination.total})
               </h3>
             </div>
 
-            {candidatosFiltrados.length === 0 ? (
+            {candidatos.length === 0 ? (
               <div className="p-8 text-center">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No se encontraron candidatos citados</p>
@@ -494,9 +467,6 @@ export default function CandidatosSeleccion() {
                         Estado
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Oleada
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Evaluación
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -505,7 +475,7 @@ export default function CandidatosSeleccion() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {candidatosFiltrados.map((candidato) => (
+                    {candidatos.map((candidato) => (
                       <tr key={candidato.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div>
@@ -544,6 +514,9 @@ export default function CandidatosSeleccion() {
                             {candidato.asistio_citacion === 'asistio' ? 'Asistió' :
                              candidato.asistio_citacion === 'no_asistio' ? 'No asistió' : 'Pendiente'}
                           </span>
+                          {candidato.asistio_citacion === 'no_asistio' && candidato.motivo_inasistencia && (
+                            <p className="text-xs text-gray-500 mt-1">{candidato.motivo_inasistencia}</p>
+                          )}
                         </td>
                         
                         <td className="px-6 py-4">
@@ -557,17 +530,6 @@ export default function CandidatosSeleccion() {
                           )}
                         </td>
                         
-                        <td className="px-6 py-4">
-                          {candidato.numero_oleada ? (
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">Oleada {candidato.numero_oleada}</p>
-                              <p className="text-xs text-gray-500">{candidato.descripcion_oleada}</p>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">Sin asignar</span>
-                          )}
-                        </td>
-
                         <td className="px-6 py-4">
                           {candidato.evaluacion_total !== null ? (
                             <div>
@@ -618,19 +580,6 @@ export default function CandidatosSeleccion() {
                               </button>
                             )}
                             
-                            {!candidato.oleada_seleccion_id && (
-                              <button
-                                onClick={() => {
-                                  setSelectedCandidato(candidato)
-                                  setShowOleadaModal(true)
-                                }}
-                                className="text-green-600 hover:text-green-800"
-                                title="Asignar oleada"
-                              >
-                                <Edit3 className="h-4 w-4" />
-                              </button>
-                            )}
-                            
                             {candidato.estado === 'entrevistado' && candidato.evaluacion_total === null && (
                               <button
                                 onClick={() => {
@@ -672,6 +621,32 @@ export default function CandidatosSeleccion() {
                 </table>
               </div>
             )}
+
+            {pagination.totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-200 px-4 py-3 lg:px-6">
+                <p className="text-xs lg:text-sm text-gray-600">
+                  Página {pagination.page} de {pagination.totalPages} · {pagination.total} candidatos
+                </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                    disabled={pagination.page <= 1}
+                    className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -685,18 +660,6 @@ export default function CandidatosSeleccion() {
             setSelectedCandidato(null)
           }}
           onMarcarAsistencia={marcarAsistencia}
-        />
-      )}
-
-      {/* Modal de Oleada */}
-      {showOleadaModal && selectedCandidato && (
-        <OleadaModal
-          candidato={selectedCandidato}
-          onClose={() => {
-            setShowOleadaModal(false)
-            setSelectedCandidato(null)
-          }}
-          onAsignarOleada={asignarOleada}
         />
       )}
 
@@ -729,11 +692,44 @@ export default function CandidatosSeleccion() {
 }
 
 // Modal para marcar asistencia
-function AsistenciaModal({ candidato, onClose, onMarcarAsistencia }) {
-  const [observaciones, setObservaciones] = useState('')
+// Catálogo "MOTIVO INASISTENCIA" de BASE RECLUTAMIENTO (Excel oficial) — "Otra" es de texto libre,
+// el resto son valores fijos. Ver claude/plan.md, séptima ronda: hasta ahora este detalle no se
+// capturaba, solo el sí/no de asistio_citacion.
+const MOTIVOS_INASISTENCIA = [
+  'Calamidad',
+  'Asunto personal',
+  'Otra oferta / Menos días capa',
+  'Otra oferta / Contrato inmediato',
+  'No contesta',
+  'No interesado / Horarios',
+  'No interesado / Ventas',
+  'No interesado / Ubicación',
+  'No interesado / Capacitación',
+  'No interesado / Call center',
+  'No interesado / No parqueadero',
+  'Otra'
+]
 
-  const handleMarcar = (asistio) => {
-    onMarcarAsistencia(candidato.id, asistio, observaciones)
+function AsistenciaModal({ candidato, onClose, onMarcarAsistencia }) {
+  const [asistio, setAsistio] = useState(null)
+  const [observaciones, setObservaciones] = useState('')
+  const [motivoInasistencia, setMotivoInasistencia] = useState('')
+  const [motivoOtro, setMotivoOtro] = useState('')
+
+  const handleGuardar = () => {
+    if (asistio === 'no_asistio') {
+      if (!motivoInasistencia) {
+        alert('Selecciona el motivo de inasistencia')
+        return
+      }
+      if (motivoInasistencia === 'Otra' && !motivoOtro.trim()) {
+        alert('Escribe el motivo de inasistencia')
+        return
+      }
+    }
+
+    const motivoFinal = motivoInasistencia === 'Otra' ? motivoOtro.trim() : motivoInasistencia
+    onMarcarAsistencia(candidato.id, asistio, observaciones, asistio === 'no_asistio' ? motivoFinal : null)
   }
 
   return (
@@ -743,36 +739,93 @@ function AsistenciaModal({ candidato, onClose, onMarcarAsistencia }) {
           <h3 className="text-lg font-medium text-gray-900 mb-4">
             Marcar Asistencia - {candidato.primer_nombre} {candidato.primer_apellido}
           </h3>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Observaciones (opcional)
-            </label>
-            <textarea
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-              className="input-field"
-              rows={3}
-              placeholder="Observaciones sobre la asistencia..."
-            />
-          </div>
 
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 mb-4">
             <button
-              onClick={() => handleMarcar('asistio')}
-              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
+              type="button"
+              onClick={() => { setAsistio('asistio'); setMotivoInasistencia(''); setMotivoOtro('') }}
+              className={`flex-1 px-4 py-2 rounded-lg flex items-center justify-center border-2 ${
+                asistio === 'asistio'
+                  ? 'bg-green-600 text-white border-green-600'
+                  : 'bg-white text-green-700 border-green-600 hover:bg-green-50'
+              }`}
             >
               <UserCheck className="h-4 w-4 mr-2" />
               Asistió
             </button>
             <button
-              onClick={() => handleMarcar('no_asistio')}
-              className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center justify-center"
+              type="button"
+              onClick={() => setAsistio('no_asistio')}
+              className={`flex-1 px-4 py-2 rounded-lg flex items-center justify-center border-2 ${
+                asistio === 'no_asistio'
+                  ? 'bg-red-600 text-white border-red-600'
+                  : 'bg-white text-red-700 border-red-600 hover:bg-red-50'
+              }`}
             >
               <UserX className="h-4 w-4 mr-2" />
               No asistió
             </button>
           </div>
+
+          {asistio === 'no_asistio' && (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Motivo de inasistencia *
+                </label>
+                <select
+                  value={motivoInasistencia}
+                  onChange={(e) => setMotivoInasistencia(e.target.value)}
+                  className="input-field"
+                  required
+                >
+                  <option value="">Selecciona motivo...</option>
+                  {MOTIVOS_INASISTENCIA.map((motivo) => (
+                    <option key={motivo} value={motivo}>{motivo}</option>
+                  ))}
+                </select>
+              </div>
+
+              {motivoInasistencia === 'Otra' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Especifica el motivo
+                  </label>
+                  <input
+                    type="text"
+                    value={motivoOtro}
+                    onChange={(e) => setMotivoOtro(e.target.value)}
+                    className="input-field"
+                    placeholder="Motivo de inasistencia..."
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {asistio && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Observaciones (opcional)
+              </label>
+              <textarea
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                className="input-field"
+                rows={3}
+                placeholder="Observaciones sobre la asistencia..."
+              />
+            </div>
+          )}
+
+          {asistio && (
+            <button
+              onClick={handleGuardar}
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Guardar
+            </button>
+          )}
 
           <button
             onClick={onClose}
@@ -780,67 +833,6 @@ function AsistenciaModal({ candidato, onClose, onMarcarAsistencia }) {
           >
             Cancelar
           </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Modal para asignar oleada
-function OleadaModal({ candidato, onClose, onAsignarOleada }) {
-  const [numeroOleada, setNumeroOleada] = useState('')
-
-  const handleAsignar = () => {
-    const numero = parseInt(numeroOleada)
-    if (numero && numero > 0) {
-      onAsignarOleada(candidato.id, numero)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Asignar Oleada - {candidato.primer_nombre} {candidato.primer_apellido}
-          </h3>
-
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 mb-2">
-              <strong>Operación:</strong> {candidato.cliente}
-            </p>
-            <p className="text-sm text-gray-600 mb-4">
-              <strong>Campaña:</strong> {candidato.cargo}
-            </p>
-
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Número de Oleada
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={numeroOleada}
-              onChange={(e) => setNumeroOleada(e.target.value)}
-              placeholder="Ej: 1, 2, 3..."
-              className="input-field"
-            />
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={handleAsignar}
-              disabled={!numeroOleada || parseInt(numeroOleada) < 1}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Asignar
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
-            >
-              Cancelar
-            </button>
-          </div>
         </div>
       </div>
     </div>

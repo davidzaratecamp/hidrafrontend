@@ -32,7 +32,6 @@ export default function NuevoCandidato() {
 
     // Datos del proceso
     cliente: '',
-    oleada: '',
     cargo: '',
     fuente_reclutamiento: '',
     observaciones_llamada: '',
@@ -52,12 +51,6 @@ export default function NuevoCandidato() {
     } catch (error) {
       console.error('Error cargando catálogos:', error)
     }
-  }
-
-  // Lógica condicional para mostrar/ocultar oleada
-  const mostrarOleada = () => {
-    const clientesConOleada = ['Claro', 'Obamacare', 'Majority']
-    return clientesConOleada.includes(formData.cliente)
   }
 
   // Obtener cargos según cliente seleccionado
@@ -112,12 +105,6 @@ export default function NuevoCandidato() {
       return
     }
 
-    // Validar oleada si es requerida
-    if (mostrarOleada() && !formData.oleada) {
-      alert('Por favor completa el campo: oleada')
-      return
-    }
-    
     try {
       setSaving(true)
 
@@ -387,10 +374,10 @@ export default function NuevoCandidato() {
                 </h3>
                 
                 <div className="grid md:grid-cols-3 gap-4">
-                  {/* Cliente */}
+                  {/* Campaña (campo interno: cliente) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cliente *
+                      Campaña *
                     </label>
                     <select
                       value={formData.cliente}
@@ -398,7 +385,7 @@ export default function NuevoCandidato() {
                       required
                       className="input-field"
                     >
-                      <option value="">Selecciona cliente</option>
+                      <option value="">Selecciona campaña</option>
                       {catalogos.clientes?.length > 0 ? (
                         catalogos.clientes.map((cliente) => (
                           <option key={cliente.value} value={cliente.value}>
@@ -409,9 +396,7 @@ export default function NuevoCandidato() {
                         <>
                           <option value="Staff Operacional">Staff Operacional</option>
                           <option value="Staff Administrativo">Staff Administrativo</option>
-                          <option value="Claro">Claro</option>
                           <option value="Obamacare">Obamacare</option>
-                          <option value="Majority">Majority</option>
                           <option value="Hogar">Hogar</option>
                           <option value="Móvil">Móvil</option>
                           <option value="TyT">TyT</option>
@@ -422,23 +407,6 @@ export default function NuevoCandidato() {
                       )}
                     </select>
                   </div>
-                  
-                  {/* Oleada - Solo visible si cliente NO es Staff */}
-                  {mostrarOleada() && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Oleada *
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.oleada}
-                        onChange={(e) => setFormData({...formData, oleada: e.target.value})}
-                        required={mostrarOleada()}
-                        className="input-field"
-                        placeholder="Q4-2024, Enero-2025..."
-                      />
-                    </div>
-                  )}
                   
                   {/* Cargo que Aplica */}
                   <div className="md:col-span-2">
@@ -453,7 +421,7 @@ export default function NuevoCandidato() {
                       disabled={!formData.cliente}
                     >
                       <option value="">
-                        {formData.cliente ? 'Selecciona cargo' : 'Primero selecciona un cliente'}
+                        {formData.cliente ? 'Selecciona cargo' : 'Primero selecciona una campaña'}
                       </option>
                       {getCargosDisponibles().length > 0 ? (
                         getCargosDisponibles().map((cargo) => (
@@ -588,7 +556,6 @@ export default function NuevoCandidato() {
                       ) : (
                         <>
                           <option value="Computrabajo">Computrabajo</option>
-                          <option value="Portal Web">Portal Web</option>
                           <option value="LinkedIn">LinkedIn</option>
                           <option value="Referido Empleado">Referido Empleado</option>
                           <option value="Referido Externo">Referido Externo</option>
@@ -669,8 +636,7 @@ export default function NuevoCandidato() {
                 <h4 className="text-sm font-semibold text-gray-900 mb-2">📝 Información Importante</h4>
                 <ul className="text-xs text-gray-700 space-y-1">
                   <li>• Los campos marcados con (*) son obligatorios</li>
-                  <li>• El campo "Oleada" solo aparece para clientes que no son Staff</li>
-                  <li>• Los cargos disponibles cambian según el cliente seleccionado</li>
+                  <li>• Los cargos disponibles cambian según la campaña seleccionada</li>
                   <li>• El candidato recibirá un email con los formularios a completar</li>
                   <li>• El token de acceso tiene una validez de 30 días</li>
                 </ul>

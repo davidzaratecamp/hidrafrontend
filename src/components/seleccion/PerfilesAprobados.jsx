@@ -327,9 +327,6 @@ export default function PerfilesAprobados() {
                         Detalles Evaluación
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Oleada
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Fecha Evaluación
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -402,16 +399,6 @@ export default function PerfilesAprobados() {
                             </div>
                           </td>
                           
-                          <td className="px-6 py-4">
-                            {candidato.numero_oleada ? (
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">Oleada {candidato.numero_oleada}</p>
-                                <p className="text-xs text-gray-500">{candidato.descripcion_oleada}</p>
-                              </div>
-                            ) : (
-                              <span className="text-sm text-gray-400">Sin asignar</span>
-                            )}
-                          </td>
                           
                           <td className="px-6 py-4">
                             <p className="text-sm text-gray-900">

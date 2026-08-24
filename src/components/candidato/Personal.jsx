@@ -5,15 +5,18 @@ import ApiService from '../../services/api'
 
 // Límites calculados contra el ancho/alto real de cada caja de texto de hojavida.pdf (página 2,
 // hojaVidaPdfService.js), reutilizando la lógica real de wrap (wrapLines) con texto
-// representativo en español y 5% de margen de seguridad (el wrap por palabras ya deja poco
-// margen de sobra respecto al cálculo teórico).
-const MAX_GENOGRAMA = 1952
-const MAX_FORTALEZAS = 933
-const MAX_ASPECTOS_MEJORAR = 629
-const MAX_COMPETENCIAS_LABORALES = 1216
-const MAX_METAS_CORTO = 50
-const MAX_METAS_MEDIANO = 44
-const MAX_METAS_LARGO = 50
+// representativo en español, A TAMAÑO ESTÁNDAR (sin encoger la letra). Recalculados
+// 2026-08-21 tras pasar la plantilla a Times New Roman; Genograma/Fortalezas/Competencias
+// Laborales además ahora arrancan en la misma línea que su nota impresa ("NOTA: ...", "Coloque
+// mínimo dos...") en vez de debajo, por eso su capacidad cambió más que la de Aspectos a
+// Mejorar (que no tiene nota con ":" y no se movió).
+const MAX_GENOGRAMA = 1457
+const MAX_FORTALEZAS = 712
+const MAX_ASPECTOS_MEJORAR = 394
+const MAX_COMPETENCIAS_LABORALES = 632
+const MAX_METAS_CORTO = 44
+const MAX_METAS_MEDIANO = 40
+const MAX_METAS_LARGO = 44
 
 export default function Personal() {
   const { token } = useParams()

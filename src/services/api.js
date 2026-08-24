@@ -130,6 +130,10 @@ class ApiService {
     return this.put(`/candidato/fecha-entrevista/${candidatoId}`, { fecha_citacion_entrevista: fecha });
   }
 
+  async marcarNoCitado(candidatoId, motivo) {
+    return this.put(`/candidato/no-citado/${candidatoId}`, { motivo });
+  }
+
   async getCatalogos() {
     return this.get('/candidato/catalogos');
   }
@@ -174,6 +178,51 @@ class ApiService {
   async getDocumentoFirmadoBlob(candidatoId, tipo) {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/candidato/firma-documento/${candidatoId}/${tipo}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || `Error: ${response.status}`);
+    }
+    return response.blob();
+  }
+
+  // Guarda el estado y/o el documento de una o varias de las 4 verificaciones de antecedentes
+  // (ADRES/POL/COMP/PROCU) - multipart, no pasa por this.put (que siempre manda JSON). No se fija
+  // Content-Type a mano: el navegador arma el boundary del multipart automáticamente. Cada
+  // verificación se auto-guarda independiente (ver PerfilCandidato.jsx), así que formData suele
+  // traer solo los campos de UNA verificación por llamada.
+  async actualizarAntecedentes(candidatoId, formData) {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/candidato/antecedentes/${candidatoId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+      }
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || `Error: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  // Descarga (proxy) el documento de antecedentes de una verificación puntual (tipo =
+  // 'adres'|'pol'|'comp'|'procu') - mismo patrón blob que getDocumentoFirmadoBlob.
+  async getDocumentoAntecedentesBlob(candidatoId, tipo) {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/candidato/antecedentes/${candidatoId}/documento/${tipo}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!response.ok) {
