@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Shield, ArrowLeft, CheckCircle, Calendar } from 'lucide-react'
+import { Shield, ArrowLeft, CheckCircle, Calendar, FileSignature } from 'lucide-react'
 import ApiService from '../../services/api'
 
 export default function Consentimiento() {
@@ -15,7 +15,6 @@ export default function Consentimiento() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [consentimientoAceptado, setConsentimientoAceptado] = useState(false)
 
   useEffect(() => {
     cargarDatos()
@@ -33,10 +32,6 @@ export default function Consentimiento() {
         mes_consentimiento: candidatoInfo.mes_consentimiento || '',
         ano_consentimiento: candidatoInfo.ano_consentimiento || new Date().getFullYear()
       })
-      
-      if (candidatoInfo.consentimiento_aceptado) {
-        setConsentimientoAceptado(true)
-      }
     } catch (error) {
       console.error('Error cargando datos:', error)
       alert('Token inválido o expirado')
@@ -47,12 +42,7 @@ export default function Consentimiento() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    if (!consentimientoAceptado) {
-      alert('Debes aceptar el consentimiento para continuar')
-      return
-    }
-    
+
     const requiredFields = ['ciudad_consentimiento', 'dia_consentimiento', 'mes_consentimiento', 'ano_consentimiento']
     
     for (const field of requiredFields) {
@@ -111,21 +101,21 @@ export default function Consentimiento() {
     <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-red-600 to-red-800 text-white p-4 sm:p-8">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 sm:p-8">
             <div className="flex items-center justify-between flex-col sm:flex-row text-center sm:text-left">
               <div className="mb-4 sm:mb-0">
-                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Consentimiento y Autorización</h1>
-                <p className="text-red-100 text-sm sm:text-base">Paso 6 de 6 - Autorización final</p>
+                <h1 className="text-2xl sm:text-3xl font-bold mb-2">Tratamiento de Datos Personales</h1>
+                <p className="text-blue-100 text-sm sm:text-base">Paso 6 de 6 - Paso final</p>
               </div>
-              <Shield className="h-8 w-8 sm:h-12 sm:w-12 text-red-200" />
+              <Shield className="h-8 w-8 sm:h-12 sm:w-12 text-blue-200" />
             </div>
-            
-            <div className="mt-6 bg-red-700 bg-opacity-50 rounded-lg p-4">
+
+            <div className="mt-6 bg-blue-700 bg-opacity-50 rounded-lg p-4">
               <div className="flex justify-between items-center text-sm">
                 <span>Progreso del formulario</span>
                 <span>{candidato.progreso_formularios}/6 completados</span>
               </div>
-              <div className="w-full bg-red-600 rounded-full h-2 mt-2">
+              <div className="w-full bg-blue-600 rounded-full h-2 mt-2">
                 <div
                   className="bg-white h-2 rounded-full transition-all duration-300"
                   style={{ width: `${(candidato.progreso_formularios / 6) * 100}%` }}
@@ -136,52 +126,20 @@ export default function Consentimiento() {
 
           <div className="p-4 sm:p-8">
             <div className="bg-blue-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-                Autorización para el Tratamiento de Datos Personales
-              </h2>
-              
-              <div className="text-sm text-gray-700 space-y-3 bg-white p-4 rounded border">
-                <p>
-                  <strong>AUTORIZACIÓN TRATAMIENTO DE DATOS - LEY 1581/2012</strong>
-                </p>
-                
-                <p>
-                  Yo, <strong>{candidato.primer_nombre} {candidato.primer_apellido}</strong>, 
-                  identificado(a) con {candidato.tipo_documento} {candidato.numero_documento}, 
-                  autorizo a <strong>ASISTE ING</strong> para recopilar, almacenar y tratar 
-                  mis datos personales para:
-                </p>
-                
-                <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>Proceso de selección y reclutamiento</li>
-                  <li>Evaluación del perfil profesional</li>
-                  <li>Contacto durante el proceso</li>
-                  <li>Verificación de información suministrada</li>
-                </ul>
-                
-                <p>
-                  <strong>Mis derechos:</strong> Puedo conocer, actualizar, rectificar y solicitar 
-                  la eliminación de mis datos contactando a ASISTE ING.
-                </p>
-                
-                <p className="text-center font-semibold text-blue-600">
-                  Al marcar acepto esta autorización según la Ley 1581 de 2012.
-                </p>
-              </div>
-              
-              <div className="mt-4">
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={consentimientoAceptado}
-                    onChange={(e) => setConsentimientoAceptado(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    required
-                  />
-                  <span className="text-sm font-medium text-gray-900">
-                    He leído y acepto la autorización para el tratamiento de datos personales
-                  </span>
-                </label>
+              <div className="flex items-start space-x-3">
+                <FileSignature className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                    ¡Gracias por completar tu hoja de vida!
+                  </h2>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    Ya diligenciaste toda la información requerida. Como último paso, a
+                    continuación podrás leer nuestra <strong>Autorización para el Tratamiento
+                    de Datos Personales</strong> (Ley 1581 de 2012) y firmarla
+                    electrónicamente para finalizar tu proceso de aplicación con{' '}
+                    <strong>ASISTE ING</strong>.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -293,23 +251,24 @@ export default function Consentimiento() {
                       Proceso completado
                     </span>
                   ) : (
-                    'Debes aceptar el consentimiento para finalizar'
+                    'Continúa para finalizar tu proceso'
                   )}
                 </div>
-                
+
                 <button
                   type="submit"
-                  disabled={saving || !consentimientoAceptado}
+                  disabled={saving}
                   className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Finalizando...
+                      Redirigiendo...
                     </>
                   ) : (
                     <>
-                      🎯 Finalizar Proceso
+                      <FileSignature className="h-4 w-4 mr-2" />
+                      Ver Tratamiento de Datos
                     </>
                   )}
                 </button>
