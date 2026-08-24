@@ -4,10 +4,11 @@ import {
   Users, UserCheck, UserX, Calendar, Briefcase,
   Clock, CheckCircle, XCircle, Eye, UserPlus, FileText,
   Filter, Search, RefreshCw, BarChart3, Calculator, Gavel,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, FileSpreadsheet
 } from 'lucide-react'
 import SidebarSeleccion from './SidebarSeleccion'
 import EvaluacionEntrevista from './EvaluacionEntrevista'
+import ModalDescargarExcel from './ModalDescargarExcel'
 import { useAuth } from '../../context/AuthContext'
 
 export default function CandidatosSeleccion() {
@@ -22,8 +23,11 @@ export default function CandidatosSeleccion() {
     buscar: '',
     operacion: '',
     asistencia: '',
-    estado: ''
+    estado: '',
+    fechaDesde: '',
+    fechaHasta: ''
   })
+  const [showModalExcel, setShowModalExcel] = useState(false)
   // Texto de búsqueda tras el debounce (300ms) - separado de filtros.buscar para no disparar
   // un fetch en cada tecla (mismo patrón que ListaCandidatos.jsx/CandidatosTotal.jsx).
   const [busquedaActiva, setBusquedaActiva] = useState('')
@@ -43,7 +47,7 @@ export default function CandidatosSeleccion() {
   // citados (1984 en local) y filtraba en el frontend. Mismo patrón que CandidatosTotal.jsx.
   useEffect(() => {
     cargarCandidatosCitados()
-  }, [page, busquedaActiva, filtros.operacion, filtros.asistencia, filtros.estado])
+  }, [page, busquedaActiva, filtros.operacion, filtros.asistencia, filtros.estado, filtros.fechaDesde, filtros.fechaHasta])
 
   // Debounce del buscador (300ms) - vuelve a página 1 en el mismo batch en que se activa la
   // búsqueda (un solo fetch, no dos).
@@ -87,6 +91,8 @@ export default function CandidatosSeleccion() {
       if (filtros.operacion) params.set('operacion', filtros.operacion)
       if (filtros.asistencia) params.set('asistencia', filtros.asistencia)
       if (filtros.estado) params.set('estado', filtros.estado)
+      if (filtros.fechaDesde) params.set('fechaDesde', filtros.fechaDesde)
+      if (filtros.fechaHasta) params.set('fechaHasta', filtros.fechaHasta)
 
       const response = await fetch(`${API_URL}/api/seleccion/candidatos-citados?${params.toString()}`, {
         headers: {
@@ -213,6 +219,34 @@ export default function CandidatosSeleccion() {
     }
   }
 
+
+  const descargarExcel = async (fechaDesde, fechaHasta) => {
+    const token = localStorage.getItem('token')
+    const params = new URLSearchParams({ fechaDesde, fechaHasta })
+    if (busquedaActiva) params.set('search', busquedaActiva)
+    if (filtros.operacion) params.set('operacion', filtros.operacion)
+    if (filtros.asistencia) params.set('asistencia', filtros.asistencia)
+    if (filtros.estado) params.set('estado', filtros.estado)
+
+    const response = await fetch(`${API_URL}/api/seleccion/candidatos-citados/exportar-excel?${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error || 'No se pudo generar el Excel')
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `seleccion_${fechaDesde}_a_${fechaHasta}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  }
 
   const formatearFecha = (fecha) => {
     if (!fecha) return '-'
@@ -365,11 +399,21 @@ export default function CandidatosSeleccion() {
 
           {/* Filtros */}
           <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 mb-6">
-            <div className="flex items-center mb-4">
-              <Filter className="h-5 w-5 text-gray-600 mr-2" />
-              <h3 className="text-lg font-medium text-gray-900">Filtros</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <Filter className="h-5 w-5 text-gray-600 mr-2" />
+                <h3 className="text-lg font-medium text-gray-900">Filtros</h3>
+              </div>
+              <button
+                onClick={() => setShowModalExcel(true)}
+                className="btn-secondary flex items-center text-sm"
+                title="Descarga el Excel de los candidatos citados en el rango de fechas seleccionado"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-600" />
+                Descargar Excel
+              </button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
@@ -426,6 +470,26 @@ export default function CandidatosSeleccion() {
                   <option value="entrevistado">Entrevistado</option>
                   <option value="rechazado">Rechazado</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fecha cita desde</label>
+                <input
+                  type="date"
+                  value={filtros.fechaDesde}
+                  onChange={(e) => actualizarFiltro('fechaDesde', e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fecha cita hasta</label>
+                <input
+                  type="date"
+                  value={filtros.fechaHasta}
+                  onChange={(e) => actualizarFiltro('fechaHasta', e.target.value)}
+                  className="input-field"
+                />
               </div>
             </div>
           </div>
@@ -686,6 +750,18 @@ export default function CandidatosSeleccion() {
           onTomarDecision={tomarDecisionFinal}
         />
       )}
+
+      {/* Modal de Descarga de Excel */}
+      <ModalDescargarExcel
+        open={showModalExcel}
+        onClose={() => setShowModalExcel(false)}
+        onDescargar={descargarExcel}
+        fechasRequeridas
+        fechaDesdeInicial={filtros.fechaDesde}
+        fechaHastaInicial={filtros.fechaHasta}
+        titulo="Descargar Excel de Selección"
+        descripcion="Candidatos citados en el rango de fechas seleccionado"
+      />
 
     </div>
   )

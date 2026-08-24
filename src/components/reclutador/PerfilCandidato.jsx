@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase,
   GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users, Edit3,
-  FileSignature, Upload, Eye, X, XCircle
+  FileSignature, Upload, Eye, X, XCircle, UserCog
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
@@ -41,6 +41,16 @@ export default function PerfilCandidato() {
   const [showNoCitadoModal, setShowNoCitadoModal] = useState(false)
   const [motivoNoCitado, setMotivoNoCitado] = useState('')
   const [guardandoNoCitado, setGuardandoNoCitado] = useState(false)
+
+  // Modal "Reasignar": transferencia directa del candidato a otro reclutador activo (sin flujo
+  // de solicitud/aceptación). Al reasignar su propio candidato, un reclutador (no admin) pierde
+  // el acceso de inmediato -reclutador_id ya no es el suyo-, así que después de confirmar se
+  // navega de vuelta a la lista en vez de recargar este mismo perfil.
+  const [showReasignarModal, setShowReasignarModal] = useState(false)
+  const [reclutadoresActivos, setReclutadoresActivos] = useState([])
+  const [cargandoReclutadores, setCargandoReclutadores] = useState(false)
+  const [nuevoReclutadorId, setNuevoReclutadorId] = useState('')
+  const [guardandoReasignar, setGuardandoReasignar] = useState(false)
 
   // Estados para edición de operación (solo para psicólogos)
   const [editandoOperacion, setEditandoOperacion] = useState(false)
@@ -690,6 +700,48 @@ export default function PerfilCandidato() {
     }
   }
 
+  const abrirModalReasignar = async () => {
+    setNuevoReclutadorId('')
+    setShowReasignarModal(true)
+    setCargandoReclutadores(true)
+    try {
+      const data = await ApiService.getReclutadoresActivos()
+      setReclutadoresActivos((data.reclutadores || []).filter((r) => r.id !== user?.id))
+    } catch (error) {
+      console.error('Error cargando reclutadores activos:', error)
+      alert('Error al cargar la lista de analistas')
+    } finally {
+      setCargandoReclutadores(false)
+    }
+  }
+
+  const confirmarReasignar = async () => {
+    if (!nuevoReclutadorId) {
+      alert('Selecciona a qué analista reasignar el candidato')
+      return
+    }
+
+    try {
+      setGuardandoReasignar(true)
+      const data = await ApiService.reasignarCandidato(candidatoId, nuevoReclutadorId)
+      setShowReasignarModal(false)
+      alert(`Candidato reasignado a ${data.nuevo_reclutador}`)
+
+      // Un reclutador (no admin/selección) pierde el acceso a este candidato apenas se
+      // reasigna - no tiene sentido recargar el mismo perfil, volvemos a la lista.
+      if (user?.rol === 'reclutador') {
+        navigate('/hydra/reclutador/candidatos')
+      } else {
+        await cargarPerfil()
+      }
+    } catch (error) {
+      console.error('Error reasignando candidato:', error)
+      alert(error.message || 'Error al reasignar el candidato')
+    } finally {
+      setGuardandoReasignar(false)
+    }
+  }
+
   const getEstadoLabel = (estado) => {
     const labels = {
       'nuevo': 'Nuevo',
@@ -1103,6 +1155,19 @@ export default function PerfilCandidato() {
                       {getEstadoLabel(candidato.estado)}
                     </span>
                   </div>
+
+                  {(user?.rol === 'reclutador' || user?.rol === 'administrador' || user?.rol === 'seleccion') && (
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Analista asignado:</span>
+                      <button
+                        onClick={abrirModalReasignar}
+                        className="flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 transition-colors"
+                      >
+                        <UserCog className="h-4 w-4 mr-2" />
+                        Reasignar
+                      </button>
+                    </div>
+                  )}
 
                   {/* Botones de acción según el estado */}
                   <div className="flex flex-wrap gap-2">
@@ -1634,6 +1699,60 @@ export default function PerfilCandidato() {
                 <button
                   onClick={() => setShowNoCitadoModal(false)}
                   disabled={guardandoNoCitado}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal "Reasignar": transfiere el candidato a otro analista activo */}
+      {showReasignarModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <UserCog className="h-5 w-5 mr-2 text-indigo-600" />
+                Reasignar Candidato
+              </h3>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nuevo analista *
+                </label>
+                {cargandoReclutadores ? (
+                  <p className="text-sm text-gray-500">Cargando analistas...</p>
+                ) : (
+                  <select
+                    value={nuevoReclutadorId}
+                    onChange={(e) => setNuevoReclutadorId(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Selecciona un analista...</option>
+                    {reclutadoresActivos.map((r) => (
+                      <option key={r.id} value={r.id}>{r.nombre_completo}</option>
+                    ))}
+                  </select>
+                )}
+                {!cargandoReclutadores && reclutadoresActivos.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-2">No hay otros analistas activos disponibles.</p>
+                )}
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={confirmarReasignar}
+                  disabled={guardandoReasignar || cargandoReclutadores || !nuevoReclutadorId}
+                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {guardandoReasignar ? 'Reasignando...' : 'Confirmar'}
+                </button>
+                <button
+                  onClick={() => setShowReasignarModal(false)}
+                  disabled={guardandoReasignar}
                   className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
                 >
                   Cancelar
