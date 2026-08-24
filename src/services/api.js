@@ -134,6 +134,14 @@ class ApiService {
     return this.put(`/candidato/no-citado/${candidatoId}`, { motivo });
   }
 
+  async getReclutadoresActivos() {
+    return this.get('/candidato/reclutadores-activos');
+  }
+
+  async reasignarCandidato(candidatoId, nuevoReclutadorId) {
+    return this.put(`/candidato/reasignar/${candidatoId}`, { nuevo_reclutador_id: nuevoReclutadorId });
+  }
+
   async getCatalogos() {
     return this.get('/candidato/catalogos');
   }

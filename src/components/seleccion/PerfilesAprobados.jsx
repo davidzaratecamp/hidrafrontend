@@ -4,9 +4,10 @@ import {
   UserCheck, Eye, Calendar, Briefcase, 
   Filter, Search, RefreshCw, BarChart3,
   Award, Star, TrendingUp, Users,
-  Download, FileText
+  FileSpreadsheet, FileText
 } from 'lucide-react'
 import SidebarSeleccion from './SidebarSeleccion'
+import ModalDescargarExcel from './ModalDescargarExcel'
 import { useAuth } from '../../context/AuthContext'
 
 export default function PerfilesAprobados() {
@@ -27,6 +28,7 @@ export default function PerfilesAprobados() {
     mejorPuntaje: 0,
     distribucionPorOperacion: []
   })
+  const [showModalExcel, setShowModalExcel] = useState(false)
 
   const API_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'http://200.91.204.54'
 
@@ -84,6 +86,37 @@ export default function PerfilesAprobados() {
     } catch (error) {
       console.error('Error cargando estadísticas:', error)
     }
+  }
+
+  const descargarExcel = async (fechaDesde, fechaHasta) => {
+    const token = localStorage.getItem('token')
+    const params = new URLSearchParams()
+    if (fechaDesde) params.set('fechaDesde', fechaDesde)
+    if (fechaHasta) params.set('fechaHasta', fechaHasta)
+    if (filtros.buscar.trim()) params.set('search', filtros.buscar.trim())
+    if (filtros.operacion) params.set('operacion', filtros.operacion)
+    if (filtros.puntajeMin) params.set('puntajeMin', filtros.puntajeMin)
+
+    const response = await fetch(`${API_URL}/api/seleccion/candidatos-aprobados/exportar-excel?${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error || 'No se pudo generar el Excel')
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fechaDesde && fechaHasta
+      ? `perfiles_aprobados_${fechaDesde}_a_${fechaHasta}.xlsx`
+      : 'perfiles_aprobados.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
   }
 
   const candidatosFiltrados = candidatos.filter(candidato => {
@@ -166,6 +199,14 @@ export default function PerfilesAprobados() {
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                <button
+                  onClick={() => setShowModalExcel(true)}
+                  className="btn-secondary flex items-center text-sm"
+                  title="Descarga el Excel de los perfiles aprobados"
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-600" />
+                  Descargar Excel
+                </button>
                 <button
                   onClick={cargarDatos}
                   className="btn-secondary flex items-center text-sm"
@@ -427,6 +468,17 @@ export default function PerfilesAprobados() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Descarga de Excel */}
+      <ModalDescargarExcel
+        open={showModalExcel}
+        onClose={() => setShowModalExcel(false)}
+        onDescargar={descargarExcel}
+        fechaDesdeInicial={filtros.fechaDesde}
+        fechaHastaInicial={filtros.fechaHasta}
+        titulo="Descargar Excel de Aprobados"
+        descripcion="Perfiles aprobados finalmente, según el rango de fechas seleccionado"
+      />
     </div>
   )
 }
