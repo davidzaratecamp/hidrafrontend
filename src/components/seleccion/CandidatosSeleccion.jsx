@@ -505,7 +505,7 @@ export default function CandidatosSeleccion() {
             {candidatos.length === 0 ? (
               <div className="p-8 text-center">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No se encontraron candidatos citados</p>
+                <p className="text-gray-600">No se encontraron candidatos</p>
               </div>
             ) : (
               <div className="overflow-x-auto">

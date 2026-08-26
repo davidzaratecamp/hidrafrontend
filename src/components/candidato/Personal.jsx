@@ -165,7 +165,7 @@ export default function Personal() {
               {/* Excel: "GENOGRAMA" (fila 60-61) */}
               <div className="bg-yellow-50 rounded-lg p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                  Genograma
+                  Núcleo Familiar
                 </h2>
                 <p className="text-sm text-gray-600 mb-4">
                   Nota: hace referencia a con quién vive usted, su núcleo familiar.

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, Briefcase,
-  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Clock, Save, Users, Edit3,
-  FileSignature, Upload, Eye, X, XCircle, UserCog
+  GraduationCap, Heart, Shield, Star, Award, FileText, Download, Save, Users, Edit3,
+  FileSignature, Upload, Eye, X, UserCog, UserCheck, DollarSign, ClipboardCheck
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import ApiService from '../../services/api'
@@ -24,23 +24,6 @@ export default function PerfilCandidato() {
   const SidebarComponent = isSeleccionModule ? SidebarSeleccion : Sidebar
   const [candidato, setCandidato] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [fechaEntrevista, setFechaEntrevista] = useState('')
-  const [editandoFecha, setEditandoFecha] = useState(false)
-  const [guardandoFecha, setGuardandoFecha] = useState(false)
-
-  // Modal "Marcar como Citado" (2026-08-21): antes cambiaba el estado directo sin pedir fecha,
-  // lo que podía dejar estado='citado' con fecha_citacion_entrevista en NULL (candidato invisible
-  // para Selección). Ahora se pide la fecha en el mismo paso; el backend agenda la fecha y avanza
-  // el estado en una sola operación atómica (mismo fix que ListaCandidatos.jsx).
-  const [showCitarModal, setShowCitarModal] = useState(false)
-  const [fechaHoraCitar, setFechaHoraCitar] = useState('')
-  const [guardandoCitar, setGuardandoCitar] = useState(false)
-
-  // Modal "No Citado": alternativa a "Marcar como Citado" cuando el reclutador decide no
-  // avanzar al candidato a entrevista. Pide una observación obligatoria del porqué.
-  const [showNoCitadoModal, setShowNoCitadoModal] = useState(false)
-  const [motivoNoCitado, setMotivoNoCitado] = useState('')
-  const [guardandoNoCitado, setGuardandoNoCitado] = useState(false)
 
   // Modal "Reasignar": transferencia directa del candidato a otro reclutador activo (sin flujo
   // de solicitud/aceptación). Al reasignar su propio candidato, un reclutador (no admin) pierde
@@ -94,7 +77,6 @@ export default function PerfilCandidato() {
     try {
       const response = await ApiService.getPerfilCompleto(candidatoId)
       setCandidato(response.candidato)
-      setFechaEntrevista(response.candidato.fecha_citacion_entrevista || '')
     } catch (error) {
       console.error('Error cargando perfil:', error)
       alert('Error al cargar el perfil del candidato')
@@ -516,30 +498,6 @@ export default function PerfilCandidato() {
     doc.save(fileName)
   }
 
-  const actualizarFechaEntrevista = async () => {
-    try {
-      setGuardandoFecha(true)
-      await ApiService.actualizarFechaEntrevista(candidatoId, fechaEntrevista)
-
-      // Recarga el perfil completo (no solo parchea fecha_citacion_entrevista) porque el backend
-      // también puede haber avanzado el estado a "citado" en la misma operación.
-      await cargarPerfil()
-
-      setEditandoFecha(false)
-      alert('Fecha de entrevista actualizada exitosamente')
-    } catch (error) {
-      console.error('Error actualizando fecha:', error)
-      alert('Error al actualizar la fecha de entrevista')
-    } finally {
-      setGuardandoFecha(false)
-    }
-  }
-
-  const cancelarEdicionFecha = () => {
-    setFechaEntrevista(candidato.fecha_citacion_entrevista || '')
-    setEditandoFecha(false)
-  }
-
   // Funciones para psicólogos - gestión de operación
   const iniciarEdicionOperacion = () => {
     setNuevaOperacion(candidato.cliente || '')
@@ -644,60 +602,6 @@ export default function PerfilCandidato() {
     }
     
     return cargosPorOperacion[nuevaOperacion] || []
-  }
-
-  const marcarCitado = () => {
-    setFechaHoraCitar('')
-    setShowCitarModal(true)
-  }
-
-  const confirmarCitarModal = async () => {
-    if (!fechaHoraCitar) {
-      alert('Selecciona la fecha y hora de la cita')
-      return
-    }
-
-    try {
-      setGuardandoCitar(true)
-      await ApiService.actualizarFechaEntrevista(candidatoId, fechaHoraCitar)
-
-      // Recarga el perfil completo: el backend fija fecha_citacion_entrevista y avanza el
-      // estado a "citado" en la misma operación.
-      await cargarPerfil()
-
-      setShowCitarModal(false)
-      alert('Candidato citado exitosamente')
-    } catch (error) {
-      console.error('Error citando candidato:', error)
-      alert('Error al citar al candidato')
-    } finally {
-      setGuardandoCitar(false)
-    }
-  }
-
-  const abrirModalNoCitado = () => {
-    setMotivoNoCitado('')
-    setShowNoCitadoModal(true)
-  }
-
-  const confirmarNoCitado = async () => {
-    if (!motivoNoCitado.trim()) {
-      alert('Escribe el motivo por el cual no se citó al candidato')
-      return
-    }
-
-    try {
-      setGuardandoNoCitado(true)
-      await ApiService.marcarNoCitado(candidatoId, motivoNoCitado.trim())
-      await cargarPerfil()
-      setShowNoCitadoModal(false)
-      alert('Candidato marcado como no citado')
-    } catch (error) {
-      console.error('Error marcando no citado:', error)
-      alert('Error al marcar al candidato como no citado')
-    } finally {
-      setGuardandoNoCitado(false)
-    }
   }
 
   const abrirModalReasignar = async () => {
@@ -888,6 +792,61 @@ export default function PerfilCandidato() {
                 </div>
               </div>
 
+              {/* Datos de Registro (formulario "Nuevo Candidato", 2026-08-26) */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <ClipboardCheck className="h-5 w-5 mr-2 text-indigo-600" />
+                  Datos de Registro
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                    <span>Fecha: {candidato.created_at ? new Date(candidato.created_at).toLocaleDateString() : '—'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <UserCheck className="h-4 w-4 mr-2 text-gray-400" />
+                    <span>Analista: {candidato.nombre_reclutador || '—'}</span>
+                  </div>
+                  {candidato.edad && (
+                    <div className="flex items-center">
+                      <User className="h-4 w-4 mr-2 text-gray-400" />
+                      <span>Edad: {candidato.edad}</span>
+                    </div>
+                  )}
+                  {candidato.fuente_reclutamiento && (
+                    <div><strong>Fuente de Reclutamiento:</strong> {candidato.fuente_reclutamiento}</div>
+                  )}
+                  {(candidato.contacto_llamada || candidato.contacto_whatsapp) && (
+                    <div>
+                      <strong>Contacto:</strong>{' '}
+                      Llamada: {candidato.contacto_llamada === 'si' ? 'Sí' : candidato.contacto_llamada === 'no' ? 'No' : '—'}
+                      {' · '}
+                      WhatsApp: {candidato.contacto_whatsapp === 'si' ? 'Sí' : candidato.contacto_whatsapp === 'no' ? 'No' : '—'}
+                    </div>
+                  )}
+                  {candidato.perfil && (
+                    <div>
+                      <strong>Perfil:</strong>
+                      <p className="mt-1 text-gray-600 break-words">{candidato.perfil}</p>
+                    </div>
+                  )}
+                  {candidato.citado_gestion && (
+                    <div>
+                      <strong>Citado:</strong> {candidato.citado_gestion === 'si' ? 'Sí' : 'No'}
+                    </div>
+                  )}
+                  {candidato.citado_gestion === 'no' && candidato.estado_gestion_reclutamiento && (
+                    <div><strong>Estado Gestión Reclutamiento:</strong> {candidato.estado_gestion_reclutamiento}</div>
+                  )}
+                  {candidato.observaciones_generales && (
+                    <div>
+                      <strong>Observaciones Generales:</strong>
+                      <p className="mt-1 text-gray-600">{candidato.observaciones_generales}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Información Médica */}
               {(candidato.grupo_sanguineo || candidato.eps || candidato.afp) && (
                 <div className="bg-white rounded-lg shadow p-6">
@@ -933,6 +892,20 @@ export default function PerfilCandidato() {
 
             {/* Información Detallada */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Hoja de Vida (paso 1/6 del formulario del candidato - solo tiene datos una vez
+                  el candidato accede al link enviado por email y lo completa) */}
+              {candidato.aspiracion_salarial && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2 text-green-600" />
+                    Hoja de Vida
+                  </h3>
+                  <div className="text-sm">
+                    <strong>Aspiración Salarial:</strong> ${Number(candidato.aspiracion_salarial).toLocaleString()}
+                  </div>
+                </div>
+              )}
+
               {/* Educación */}
               {(candidato.nivel_estudios || candidato.titulo_obtenido) && (
                 <div className="bg-white rounded-lg shadow p-6">
@@ -1047,91 +1020,6 @@ export default function PerfilCandidato() {
                 </div>
               )}
 
-              {/* Gestión de Entrevista */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-purple-600" />
-                  Gestión de Entrevista
-                </h3>
-                
-                <div className="space-y-4">
-                  {editandoFecha ? (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Fecha y Hora de Entrevista
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={fechaEntrevista}
-                          onChange={(e) => setFechaEntrevista(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={actualizarFechaEntrevista}
-                          disabled={guardandoFecha}
-                          className="flex items-center px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50"
-                        >
-                          {guardandoFecha ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                              Guardando...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-3 w-3 mr-1" />
-                              Guardar
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={cancelarEdicionFecha}
-                          disabled={guardandoFecha}
-                          className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400 disabled:opacity-50"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm">
-                        {candidato.fecha_citacion_entrevista ? (
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                            <span className="font-medium text-gray-900">
-                              {new Date(candidato.fecha_citacion_entrevista).toLocaleString('es-ES', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="text-gray-500">
-                            No hay fecha de entrevista programada
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => setEditandoFecha(true)}
-                          className="flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded text-sm hover:bg-purple-200 transition-colors"
-                        >
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {candidato.fecha_citacion_entrevista ? 'Editar' : 'Programar'}
-                        </button>
-                        
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Gestión del Proceso */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -1171,25 +1059,6 @@ export default function PerfilCandidato() {
 
                   {/* Botones de acción según el estado */}
                   <div className="flex flex-wrap gap-2">
-                    {['nuevo', 'contacto_exitoso', 'formularios_completados'].includes(candidato.estado) && (
-                      <>
-                        <button
-                          onClick={marcarCitado}
-                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Marcar como Citado
-                        </button>
-                        <button
-                          onClick={abrirModalNoCitado}
-                          className="flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200 transition-colors"
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          No Citado
-                        </button>
-                      </>
-                    )}
-
                     {candidato.estado === 'citado' && (
                       <div className="text-sm text-gray-600 italic p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="flex items-center">
@@ -1617,93 +1486,6 @@ export default function PerfilCandidato() {
               >
                 Cancelar
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal "Marcar como Citado": pide fecha/hora antes de citar (2026-08-21) */}
-      {showCitarModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-purple-600" />
-                Citar a Entrevista - {candidato?.primer_nombre} {candidato?.primer_apellido}
-              </h3>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha y Hora de la Cita *
-                </label>
-                <input
-                  type="datetime-local"
-                  value={fechaHoraCitar}
-                  onChange={(e) => setFechaHoraCitar(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={confirmarCitarModal}
-                  disabled={guardandoCitar}
-                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {guardandoCitar ? 'Guardando...' : 'Confirmar Cita'}
-                </button>
-                <button
-                  onClick={() => setShowCitarModal(false)}
-                  disabled={guardandoCitar}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal "No Citado": pide el motivo por el cual no se citó al candidato */}
-      {showNoCitadoModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <XCircle className="h-5 w-5 mr-2 text-red-600" />
-                Marcar como No Citado
-              </h3>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Motivo *
-                </label>
-                <textarea
-                  value={motivoNoCitado}
-                  onChange={(e) => setMotivoNoCitado(e.target.value)}
-                  rows={4}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Explica por qué no se citó al candidato..."
-                />
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={confirmarNoCitado}
-                  disabled={guardandoNoCitado || !motivoNoCitado.trim()}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {guardandoNoCitado ? 'Guardando...' : 'Confirmar'}
-                </button>
-                <button
-                  onClick={() => setShowNoCitadoModal(false)}
-                  disabled={guardandoNoCitado}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50"
-                >
-                  Cancelar
-                </button>
-              </div>
             </div>
           </div>
         </div>
