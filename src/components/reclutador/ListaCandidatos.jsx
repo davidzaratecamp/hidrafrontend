@@ -239,7 +239,7 @@ export default function ListaCandidatos() {
       )
     }
 
-    if (candidato.estado === 'citado') {
+    if (candidato.estado === 'citado' || candidato.estado === 'entrevistado') {
       return (
         <button
           onClick={() => handleReenviarEmail(candidato.id)}
@@ -250,7 +250,7 @@ export default function ListaCandidatos() {
         </button>
       )
     }
-    
+
     return (
       <button className="flex items-center px-3 py-1 bg-gray-300 text-gray-600 rounded text-sm cursor-not-allowed">
         <Eye className="h-4 w-4 mr-1" />
