@@ -81,17 +81,35 @@ export default function Estudios() {
     setFilas((prev) => prev.map((f) => f.nivel_estudios === nivel ? { ...f, [campo]: valor } : f))
   }
 
+  // Un nivel se considera "lleno" cuando tiene sus 3 datos (institución/título/año) o, para
+  // Conocimientos Informáticos, la descripción - mismo criterio que ya exige handleSubmit para
+  // cualquier nivel con datos. Se usa para revelar el siguiente nivel progresivamente (2026-08-26).
+  const nivelLleno = (valorNivel) => {
+    const fila = filas.find((f) => f.nivel_estudios === valorNivel)
+    if (!fila) return false
+    return valorNivel === NIVEL_TEXTO_LIBRE
+      ? !!fila.descripcion
+      : !!(fila.nombre_institucion && fila.titulo_obtenido && fila.ano_finalizacion)
+  }
+
+  // Bachillerato (primer nivel) siempre visible; cada nivel siguiente solo aparece una vez el
+  // anterior está lleno - los niveles después del primero son opcionales, así que si el candidato
+  // borra un nivel ya lleno, el siguiente vuelve a ocultarse (sin perder los datos que ya tenía).
+  const nivelesVisibles = NIVELES.filter((nivel, i) => i === 0 || nivelLleno(NIVELES[i - 1].value))
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // Bachillerato es obligatorio (2026-08-26) - antes bastaba con llenar cualquier nivel.
+    const bachillerato = filas.find((f) => f.nivel_estudios === NIVELES[0].value)
+    if (!bachillerato.nombre_institucion || !bachillerato.titulo_obtenido || !bachillerato.ano_finalizacion) {
+      alert(`Completa institución, título y año de "${NIVELES[0].label}" - es obligatorio`)
+      return
+    }
 
     const filasConDatos = filas.filter((f) =>
       f.nombre_institucion || f.titulo_obtenido || f.ano_finalizacion || f.descripcion
     )
-
-    if (filasConDatos.length === 0) {
-      alert('Completa al menos un nivel de estudios')
-      return
-    }
 
     for (const f of filasConDatos) {
       const nivel = NIVELES.find((n) => n.value === f.nivel_estudios)?.label
@@ -178,17 +196,26 @@ export default function Estudios() {
                   Información Académica
                 </h2>
                 <p className="text-sm text-gray-600 mb-4">
-                  Completa los niveles que apliquen. Deja en blanco los que no correspondan.
+                  Bachillerato es obligatorio. Al completarlo aparecerá el siguiente nivel — los
+                  demás son opcionales.
                 </p>
 
                 <div className="space-y-6">
-                  {NIVELES.map((nivel) => {
+                  {nivelesVisibles.map((nivel, i) => {
                     const fila = filas.find((f) => f.nivel_estudios === nivel.value)
                     const esTextoLibre = nivel.value === NIVEL_TEXTO_LIBRE
+                    const esObligatorio = i === 0
 
                     return (
                       <div key={nivel.value} className="bg-white rounded-lg p-4 border border-purple-100">
-                        <h3 className="font-semibold text-gray-800 mb-3">{nivel.label}</h3>
+                        <h3 className="font-semibold text-gray-800 mb-3">
+                          {nivel.label}
+                          {esObligatorio ? (
+                            <span className="text-red-500 ml-1">*</span>
+                          ) : (
+                            <span className="text-gray-400 font-normal text-sm ml-2">(opcional)</span>
+                          )}
+                        </h3>
 
                         {esTextoLibre ? (
                           <div>
@@ -285,7 +312,7 @@ export default function Estudios() {
                       Este formulario ya fue completado
                     </span>
                   ) : (
-                    'Completa al menos un nivel de estudios'
+                    'Bachillerato es obligatorio, los demás niveles son opcionales'
                   )}
                 </div>
 

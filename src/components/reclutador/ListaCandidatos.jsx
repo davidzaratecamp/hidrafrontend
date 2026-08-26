@@ -33,17 +33,22 @@ export default function ListaCandidatos() {
   const [mostrarContactosFallidos, setMostrarContactosFallidos] = useState(false)
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 })
-  // Modal "Citar a entrevista" (2026-08-21): antes "Marcar como Citado" cambiaba el estado sin
-  // pedir fecha/hora, lo que podía dejar estado='citado' con fecha_citacion_entrevista en NULL
-  // (candidato invisible para Selección, que filtra por esa fecha). Ahora se pide la fecha en el
-  // mismo paso, y el backend (actualizarFechaEntrevista) agenda la fecha y avanza el estado en una
-  // sola operación atómica.
+  // Modal "Citar" (2026-08-26): ya no pide fecha/hora de entrevista - se simplificó al mismo
+  // control "Citado" (Sí/No) + "Estado Gestión Reclutamiento" del formulario "Nuevo Candidato"
+  // (citado_gestion/estado_gestion_reclutamiento, actualizarCitadoGestion). No toca `estado` ni
+  // `fecha_citacion_entrevista` (misma decisión de columnas separadas que en crearCandidato).
   const [candidatoACitar, setCandidatoACitar] = useState(null)
-  const [fechaHoraCita, setFechaHoraCita] = useState('')
+  const [citadoGestionModal, setCitadoGestionModal] = useState('')
+  const [estadoGestionModal, setEstadoGestionModal] = useState('')
   const [guardandoCita, setGuardandoCita] = useState(false)
+  const [catalogos, setCatalogos] = useState({})
 
+  // 'nuevo' reemplaza a 'contacto_exitoso' (2026-08-26) - lista todos los registros creados vía
+  // "Nuevo Candidato" (todo candidato nuevo entra con estado='nuevo', ver crearCandidato), del
+  // más reciente al más antiguo (mismo ORDER BY updated_at DESC del backend, que en estado
+  // 'nuevo' coincide con la fecha de creación salvo que se edite el registro).
   const estadosConfig = {
-    contacto_exitoso: { label: 'Contacto Exitoso', color: 'bg-green-100 text-green-800' },
+    nuevo: { label: 'Nuevos Candidatos', color: 'bg-green-100 text-green-800' },
     formularios_enviados: { label: 'Formularios Enviados', color: 'bg-blue-100 text-blue-800' },
     formularios_completados: { label: 'Formularios Completados', color: 'bg-green-100 text-green-800' },
     citado: { label: 'Citados', color: 'bg-purple-100 text-purple-800' },
@@ -61,6 +66,7 @@ export default function ListaCandidatos() {
 
   useEffect(() => {
     cargarResumenEstados()
+    cargarCatalogos()
   }, [])
 
   useEffect(() => {
@@ -98,6 +104,17 @@ export default function ListaCandidatos() {
     }
   }
 
+  // Catálogo de "Estado Gestión Reclutamiento" para el modal "Citar" (mismo que usa
+  // NuevoCandidato.jsx).
+  const cargarCatalogos = async () => {
+    try {
+      const data = await ApiService.getCatalogos()
+      setCatalogos(data)
+    } catch (error) {
+      console.error('Error cargando catálogos:', error)
+    }
+  }
+
   const cargarCandidatos = async () => {
     try {
       setLoading(true)
@@ -125,27 +142,33 @@ export default function ListaCandidatos() {
 
   const handleAbrirModalCitar = (candidato) => {
     setCandidatoACitar(candidato)
-    setFechaHoraCita('')
+    setCitadoGestionModal('')
+    setEstadoGestionModal('')
   }
 
   const handleConfirmarCita = async () => {
-    if (!fechaHoraCita) {
-      alert('Selecciona la fecha y hora de la cita')
+    if (!citadoGestionModal) {
+      alert('Selecciona Citado')
+      return
+    }
+    if (citadoGestionModal === 'no' && !estadoGestionModal) {
+      alert('Selecciona un Estado Gestión Reclutamiento')
       return
     }
 
     try {
       setGuardandoCita(true)
-      await ApiService.actualizarFechaEntrevista(candidatoACitar.id, fechaHoraCita)
+      await ApiService.actualizarCitadoGestion(candidatoACitar.id, citadoGestionModal, estadoGestionModal)
 
-      alert('Candidato citado exitosamente')
+      alert('Candidato actualizado exitosamente')
       setCandidatoACitar(null)
-      setFechaHoraCita('')
+      setCitadoGestionModal('')
+      setEstadoGestionModal('')
       cargarCandidatos()
       cargarResumenEstados()
     } catch (error) {
-      console.error('Error citando candidato:', error)
-      alert('Error al citar al candidato')
+      console.error('Error actualizando citado:', error)
+      alert('Error al actualizar el candidato')
     } finally {
       setGuardandoCita(false)
     }
@@ -194,6 +217,17 @@ export default function ListaCandidatos() {
     }
     
     if (candidato.estado === 'nuevo') {
+      // Si en el formulario "Nuevo Candidato" ya se marcó Citado=Sí (citado_gestion), no se
+      // ofrece el modal "Citar" de nuevo acá - solo se ofrece a los que quedaron con Citado=No
+      // (o sin marcar, candidatos previos a esta funcionalidad) (2026-08-26).
+      if (candidato.citado_gestion === 'si') {
+        return (
+          <button className="flex items-center px-3 py-1 bg-gray-300 text-gray-600 rounded text-sm cursor-not-allowed">
+            <Eye className="h-4 w-4 mr-1" />
+            Ver
+          </button>
+        )
+      }
       return (
         <button
           onClick={() => handleAbrirModalCitar(candidato)}
@@ -537,27 +571,89 @@ export default function ListaCandidatos() {
         </div>
       </div>
 
-      {/* Modal "Citar a entrevista" */}
+      {/* Modal "Citar": Citado (Sí/No) + Estado Gestión Reclutamiento, mismo control que
+          NuevoCandidato.jsx (2026-08-26, ya no pide fecha/hora de entrevista) */}
       {candidatoACitar && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                 <Calendar className="h-5 w-5 mr-2 text-purple-600" />
-                Citar a Entrevista - {candidatoACitar.primer_nombre} {candidatoACitar.primer_apellido}
+                Citado - {candidatoACitar.primer_nombre} {candidatoACitar.primer_apellido}
               </h3>
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha y Hora de la Cita *
+                  Citado *
                 </label>
-                <input
-                  type="datetime-local"
-                  value={fechaHoraCita}
-                  onChange={(e) => setFechaHoraCita(e.target.value)}
+                <select
+                  value={citadoGestionModal}
+                  onChange={(e) => {
+                    const valor = e.target.value
+                    setCitadoGestionModal(valor)
+                    if (valor === 'si') setEstadoGestionModal('')
+                  }}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+                >
+                  <option value="">Selecciona</option>
+                  <option value="si">Sí</option>
+                  <option value="no">No</option>
+                </select>
               </div>
+
+              {citadoGestionModal === 'no' && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Estado Gestión Reclutamiento *
+                  </label>
+                  <select
+                    value={estadoGestionModal}
+                    onChange={(e) => setEstadoGestionModal(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="">Selecciona estado</option>
+                    {catalogos.estado_gestion_reclutamiento?.length > 0 ? (
+                      catalogos.estado_gestion_reclutamiento.map((item) => (
+                        item.grupo ? (
+                          <optgroup key={item.grupo} label={item.grupo}>
+                            {item.opciones.map((op) => (
+                              <option key={op.value} value={op.value}>{op.label}</option>
+                            ))}
+                          </optgroup>
+                        ) : (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        )
+                      ))
+                    ) : (
+                      <>
+                        <option value="#Errado">#Errado</option>
+                        <option value="No Contesta / Msj Global-Wa">No Contesta / Msj Global-Wa</option>
+                        <option value="Contesta / Cuelga / Mensaje Global-Wa">Contesta / Cuelga / Mensaje Global-Wa</option>
+                        <optgroup label="NO APTO POR:">
+                          <option value="No Apto / Estudiante">No Apto / Estudiante</option>
+                          <option value="No Apto / No experiencia">No Apto / No experiencia</option>
+                          <option value="No Apto / Ubicación">No Apto / Ubicación</option>
+                          <option value="No Apto / Edad mayor a 35">No Apto / Edad mayor a 35</option>
+                          <option value="No Apto / No certificado de bachiller">No Apto / No certificado de bachiller</option>
+                          <option value="No Apto / Menor de edad">No Apto / Menor de edad</option>
+                          <option value="No Apto / Disposición">No Apto / Disposición</option>
+                          <option value="No Apto / Sobreperfilado">No Apto / Sobreperfilado</option>
+                          <option value="No Apto / EPS">No Apto / EPS</option>
+                        </optgroup>
+                        <optgroup label="NO INTERESADOS POR:">
+                          <option value="No interesado / Horarios">No interesado / Horarios</option>
+                          <option value="No interesado / Ventas">No interesado / Ventas</option>
+                          <option value="No interesado / Ubicación">No interesado / Ubicación</option>
+                          <option value="No interesado / Capacitación">No interesado / Capacitación</option>
+                          <option value="No interesado / Call Center">No interesado / Call Center</option>
+                          <option value="No interesado / Ya trabaja">No interesado / Ya trabaja</option>
+                          <option value="No interesado / No parqueadero">No interesado / No parqueadero</option>
+                        </optgroup>
+                      </>
+                    )}
+                  </select>
+                </div>
+              )}
 
               <div className="flex space-x-3">
                 <button
@@ -565,7 +661,7 @@ export default function ListaCandidatos() {
                   disabled={guardandoCita}
                   className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  {guardandoCita ? 'Guardando...' : 'Confirmar Cita'}
+                  {guardandoCita ? 'Guardando...' : 'Guardar'}
                 </button>
                 <button
                   onClick={() => setCandidatoACitar(null)}

@@ -45,6 +45,10 @@ export default function Experiencia() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  // "Actualmente trabajo aquí" (2026-08-26): fecha_retiro_experiencia y motivo_retiro pasan a ser
+  // opcionales cuando está marcado - no se guarda un flag aparte, se infiere de que
+  // fecha_retiro_experiencia venga vacía (ver misma inferencia en el backend).
+  const [trabajaActualmente, setTrabajaActualmente] = useState(false)
 
   useEffect(() => {
     cargarDatos()
@@ -81,6 +85,7 @@ export default function Experiencia() {
         tiempo_laborado_asiste: candidatoInfo.tiempo_laborado_asiste || '',
         motivo_retiro_asiste: candidatoInfo.motivo_retiro_asiste || ''
       })
+      setTrabajaActualmente(!!candidatoInfo.fecha_inicio_experiencia && !candidatoInfo.fecha_retiro_experiencia)
     } catch (error) {
       console.error('Error cargando datos:', error)
       alert('Token inválido o expirado')
@@ -125,20 +130,19 @@ export default function Experiencia() {
     return { anos, meses }
   }
 
-  // Efecto para calcular automáticamente el tiempo laborado
+  // Efecto para calcular automáticamente el tiempo laborado - si "trabaja actualmente" está
+  // marcado, usa la fecha de hoy como fin en vez de fecha_retiro_experiencia (que queda vacía).
   useEffect(() => {
-    if (formData.fecha_inicio_experiencia && formData.fecha_retiro_experiencia) {
-      const { anos, meses } = calcularTiempoLaborado(
-        formData.fecha_inicio_experiencia,
-        formData.fecha_retiro_experiencia
-      )
+    const fechaFin = trabajaActualmente ? new Date().toISOString().slice(0, 10) : formData.fecha_retiro_experiencia
+    if (formData.fecha_inicio_experiencia && fechaFin) {
+      const { anos, meses } = calcularTiempoLaborado(formData.fecha_inicio_experiencia, fechaFin)
       setFormData(prev => ({
         ...prev,
         tiempo_laborado_anos: anos,
         tiempo_laborado_meses: meses
       }))
     }
-  }, [formData.fecha_inicio_experiencia, formData.fecha_retiro_experiencia])
+  }, [formData.fecha_inicio_experiencia, formData.fecha_retiro_experiencia, trabajaActualmente])
 
   // Excel: "SI SU RESPUESTA ES AFIRMATIVA, ¿EN QUE CAMPAÑA LABORÓ?" - los detalles del
   // reintegro solo aplican si contestó "Sí" a alguna de las 2 preguntas de Asiste ING.
@@ -148,8 +152,12 @@ export default function Experiencia() {
     e.preventDefault()
 
     const requiredFields = ['nombre_empresa', 'cargo_desempenado', 'salario_experiencia', 'funciones',
-                           'fecha_inicio_experiencia', 'fecha_retiro_experiencia', 'motivo_retiro',
+                           'fecha_inicio_experiencia',
                            'ha_trabajado_asiste', 'ha_estado_proceso_formativo_asiste']
+    // Fecha de Retiro y Motivo de Retiro solo son obligatorios si NO está trabajando actualmente.
+    if (!trabajaActualmente) {
+      requiredFields.push('fecha_retiro_experiencia', 'motivo_retiro')
+    }
 
     for (const field of requiredFields) {
       if (formData[field] === '' || formData[field] === null || formData[field] === undefined) {
@@ -324,14 +332,30 @@ export default function Experiencia() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fecha de Retiro *
+                      Fecha de Retiro {!trabajaActualmente && '*'}
+                    </label>
+                    <label className="flex items-center text-sm text-gray-600 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={trabajaActualmente}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setTrabajaActualmente(checked)
+                          if (checked) {
+                            setFormData((prev) => ({ ...prev, fecha_retiro_experiencia: '' }))
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      Actualmente trabajo aquí
                     </label>
                     <input
                       type="date"
                       value={formData.fecha_retiro_experiencia}
                       onChange={(e) => setFormData({...formData, fecha_retiro_experiencia: e.target.value})}
-                      required
-                      className="input-field"
+                      required={!trabajaActualmente}
+                      disabled={trabajaActualmente}
+                      className={`input-field ${trabajaActualmente ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                   </div>
 
@@ -343,7 +367,7 @@ export default function Experiencia() {
                       type="text"
                       value={
                         formData.tiempo_laborado_anos > 0 || formData.tiempo_laborado_meses > 0
-                          ? `${formData.tiempo_laborado_anos} años y ${formData.tiempo_laborado_meses} meses`
+                          ? `${formData.tiempo_laborado_anos} años y ${formData.tiempo_laborado_meses} meses${trabajaActualmente ? ' (hasta la fecha)' : ''}`
                           : 'Se calcula automáticamente al seleccionar fechas'
                       }
                       disabled
@@ -353,16 +377,16 @@ export default function Experiencia() {
 
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Motivo de Retiro *
+                      Motivo de Retiro {!trabajaActualmente && '*'}
                     </label>
                     <textarea
                       value={formData.motivo_retiro}
                       onChange={(e) => setFormData({...formData, motivo_retiro: e.target.value.slice(0, MAX_MOTIVO_RETIRO)})}
-                      required
+                      required={!trabajaActualmente}
                       className="input-field"
                       rows="2"
                       maxLength={MAX_MOTIVO_RETIRO}
-                      placeholder="Motivo breve (ej: Nueva oportunidad laboral)"
+                      placeholder={trabajaActualmente ? 'No aplica - actualmente trabajas aquí' : 'Motivo breve (ej: Nueva oportunidad laboral)'}
                     />
                     <p className="text-xs text-gray-500 mt-1 text-right">
                       {formData.motivo_retiro.length}/{MAX_MOTIVO_RETIRO} caracteres — la plantilla solo tiene espacio para una frase corta
