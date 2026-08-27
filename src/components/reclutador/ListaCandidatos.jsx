@@ -219,23 +219,29 @@ export default function ListaCandidatos() {
     if (candidato.estado === 'nuevo') {
       // Si en el formulario "Nuevo Candidato" ya se marcó Citado=Sí (citado_gestion), no se
       // ofrece el modal "Citar" de nuevo acá - solo se ofrece a los que quedaron con Citado=No
-      // (o sin marcar, candidatos previos a esta funcionalidad) (2026-08-26).
-      if (candidato.citado_gestion === 'si') {
-        return (
-          <button className="flex items-center px-3 py-1 bg-gray-300 text-gray-600 rounded text-sm cursor-not-allowed">
-            <Eye className="h-4 w-4 mr-1" />
-            Ver
-          </button>
-        )
-      }
+      // (o sin marcar, candidatos previos a esta funcionalidad) (2026-08-26). El botón "Email"
+      // siempre se ofrece en 'nuevo' (sin importar citado_gestion): es la única forma de enviarle
+      // al candidato el link para llenar sus formularios, ya que el modal "Citar" ya no agenda
+      // fecha/hora ni avanza el estado a 'citado' (que antes era lo que desbloqueaba el email).
       return (
-        <button
-          onClick={() => handleAbrirModalCitar(candidato)}
-          className="flex items-center px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors"
-        >
-          <Calendar className="h-4 w-4 mr-1" />
-          Citar
-        </button>
+        <div className="flex space-x-1">
+          {candidato.citado_gestion !== 'si' && (
+            <button
+              onClick={() => handleAbrirModalCitar(candidato)}
+              className="flex items-center px-2 py-1 lg:px-3 lg:py-1 bg-purple-600 text-white rounded text-xs lg:text-sm hover:bg-purple-700 transition-colors"
+            >
+              <Calendar className="h-3 w-3 lg:h-4 lg:w-4 mr-1 flex-shrink-0" />
+              <span className="hidden sm:inline">Citar</span>
+            </button>
+          )}
+          <button
+            onClick={() => handleReenviarEmail(candidato.id)}
+            className="flex items-center px-2 py-1 lg:px-3 lg:py-1 bg-blue-600 text-white rounded text-xs lg:text-sm hover:bg-blue-700 transition-colors"
+          >
+            <Mail className="h-3 w-3 lg:h-4 lg:w-4 mr-1 flex-shrink-0" />
+            <span className="hidden sm:inline">Email</span>
+          </button>
+        </div>
       )
     }
 
