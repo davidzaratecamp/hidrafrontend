@@ -1,61 +1,79 @@
-import { useAuth } from '../../context/AuthContext'
 import { Navigate } from 'react-router-dom'
+import { ShieldAlert } from 'lucide-react'
+import { useAuth } from '../../context/useAuth'
 
-export default function ProtectedRoute({ children, permission, roles, redirectTo = '/login' }) {
-  const { isAuthenticated, user, hasPermission, isRole, loading } = useAuth()
+function Denegado({ titulo, detalle }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="max-w-md w-full rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+        <ShieldAlert className="h-10 w-10 text-red-500 mx-auto" />
+        <h2 className="mt-3 text-lg font-semibold text-red-800">{titulo}</h2>
+        {detalle && <p className="mt-2 text-sm text-red-600">{detalle}</p>}
+      </div>
+    </div>
+  )
+}
 
-  // Mostrar loading mientras se verifica la autenticación
+/**
+ * Guarda de ruta.
+ *
+ * Se prefiere `permission`: los permisos son datos en la base, así que ampliar
+ * el acceso de un rol no obliga a tocar el frontend. `roles` queda para los
+ * casos donde la regla es realmente sobre el rol.
+ *
+ * Cambio importante: un usuario ahora puede tener VARIOS roles, así que se
+ * compara contra `user.roles` en vez de contra `user.rol`.
+ */
+export default function ProtectedRoute({
+  children,
+  permission,
+  permissions,
+  roles,
+  redirectTo = '/login',
+}) {
+  const { isAuthenticated, user, hasPermission, hasAnyPermission, hasAnyRole, loading } = useAuth()
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-600 mt-2">Verificando autenticación...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
+          <p className="text-gray-600 mt-2">Verificando sesión…</p>
         </div>
       </div>
     )
   }
 
-  // Si no está autenticado, redirigir al login
-  if (!isAuthenticated) {
-    return <Navigate to={redirectTo} replace />
-  }
+  if (!isAuthenticated) return <Navigate to={redirectTo} replace />
 
-  // Si se requiere un permiso específico
   if (permission && !hasPermission(permission)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="bg-red-100 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-red-800">Acceso Denegado</h2>
-            <p className="text-red-600 mt-2">No tienes permisos para acceder a esta página.</p>
-            <p className="text-sm text-red-500 mt-1">Permiso requerido: {permission}</p>
-          </div>
-        </div>
-      </div>
+      <Denegado
+        titulo="No tienes acceso a esta página"
+        detalle={`Requiere el permiso "${permission}".`}
+      />
     )
   }
 
-  // Si se requieren roles específicos
-  if (roles && roles.length > 0 && !roles.some(role => isRole(role))) {
+  if (permissions?.length > 0 && !hasAnyPermission(permissions)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="bg-red-100 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-red-800">Acceso Denegado</h2>
-            <p className="text-red-600 mt-2">Tu rol no tiene acceso a esta página.</p>
-            <p className="text-sm text-red-500 mt-1">
-              Roles permitidos: {roles.join(', ')}
-            </p>
-            <p className="text-sm text-red-500">
-              Tu rol actual: {user?.rol}
-            </p>
-          </div>
-        </div>
-      </div>
+      <Denegado
+        titulo="No tienes acceso a esta página"
+        detalle={`Requiere alguno de estos permisos: ${permissions.join(', ')}.`}
+      />
     )
   }
 
-  // Si pasa todas las validaciones, mostrar el contenido
+  if (roles?.length > 0 && !hasAnyRole(roles)) {
+    return (
+      <Denegado
+        titulo="Tu rol no tiene acceso a esta página"
+        detalle={`Permitidos: ${roles.join(', ')}. Tus roles: ${
+          (user?.roles ?? []).join(', ') || 'ninguno'
+        }.`}
+      />
+    )
+  }
+
   return children
 }

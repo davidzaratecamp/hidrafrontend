@@ -1,172 +1,116 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import RoleRedirect from './components/auth/RoleRedirect'
 import Login from './components/auth/Login'
-import Dashboard from './components/reclutador/Dashboard'
-import Estadisticas from './components/reclutador/Estadisticas'
-import ListaCandidatos from './components/reclutador/ListaCandidatos'
-import CandidatosTotal from './components/reclutador/CandidatosTotal'
-import NuevoCandidato from './components/reclutador/NuevoCandidato'
-import EditarCandidato from './components/reclutador/EditarCandidato'
-import PerfilCandidato from './components/reclutador/PerfilCandidato'
-import CandidatosSeleccion from './components/seleccion/CandidatosSeleccion'
-import PerfilesAprobados from './components/seleccion/PerfilesAprobados'
-import PerfilesRechazados from './components/seleccion/PerfilesRechazados'
-import GestionUsuarios from './components/seleccion/GestionUsuarios'
-import HojaVida from './components/candidato/HojaVida'
-import DatosBasicos from './components/candidato/DatosBasicos'
-import Estudios from './components/candidato/Estudios'
-import Experiencia from './components/candidato/Experiencia'
-import Personal from './components/candidato/Personal'
-import Consentimiento from './components/candidato/Consentimiento'
-import GestionReclutadores from './components/admin/GestionReclutadores'
-import DesprendiblesPage from './components/desprendibles/DesprendiblesPage'
 
-function App() {
+import MiTrazabilidad from './components/trazabilidad/MiTrazabilidad'
+import TrazabilidadEquipo from './components/trazabilidad/TrazabilidadEquipo'
+import TrazabilidadReclutador from './components/trazabilidad/TrazabilidadReclutador'
+import NuevoCandidato from './components/candidatos/NuevoCandidato'
+import ListaCandidatos from './components/candidatos/ListaCandidatos'
+import PerfilCandidato from './components/candidatos/PerfilCandidato'
+import Agenda from './components/seleccion/Agenda'
+import Decisiones from './components/seleccion/Decisiones'
+import DashboardSeleccion from './components/seleccion/DashboardSeleccion'
+import GestionUsuarios from './components/usuarios/GestionUsuarios'
+import RolesPermisos from './components/usuarios/RolesPermisos'
+import Desprendibles from './components/desprendibles/Desprendibles'
+import BaseHistorica from './components/historico/BaseHistorica'
+import FormularioCandidato from './components/candidato/FormularioCandidato'
+
+/**
+ * Rutas de la aplicación.
+ *
+ * Cambios respecto a la versión anterior:
+ *   - Las rutas dejan de llevar el prefijo por rol (`/hydra/reclutador/...`,
+ *     `/hydra/seleccion/...`, `/hydra/admin/...`). Con usuarios multirol ese
+ *     prefijo dejó de tener sentido: la misma pantalla la usan varios roles y
+ *     lo que decide el acceso es el permiso, no el segmento de la URL.
+ *   - El acceso se declara con `permission`, que es dato en la base, en vez de
+ *     con listas de roles fijas en el código.
+ */
+
+/**
+ * Los correos enviados con el sistema anterior llevaban una ruta por paso
+ * (`/candidato/hoja-vida/:token`). Se redirigen al formulario único para que
+ * esos enlaces no queden muertos.
+ */
+function RedirigirFormularioViejo() {
+  const { token } = useParams()
+  return <Navigate to={`/candidato/formulario/${token}`} replace />
+}
+
+/** Envuelve una pantalla protegida, para no repetir la anidación. */
+function Protegida({ permission, permissions, children }) {
+  return (
+    <ProtectedRoute permission={permission} permissions={permissions}>
+      {children}
+    </ProtectedRoute>
+  )
+}
+
+/** Ruta → permiso → pantalla. Un solo lugar donde mirar quién entra a qué. */
+const PANTALLAS = [
+  { path: '/trazabilidad', permission: 'ver_dashboard', Componente: MiTrazabilidad },
+  { path: '/trazabilidad/equipo', permission: 'ver_perfiles_completos', Componente: TrazabilidadEquipo },
+  {
+    path: '/trazabilidad/reclutador/:reclutadorId',
+    permission: 'ver_perfiles_completos',
+    Componente: TrazabilidadReclutador,
+  },
+
+  { path: '/candidatos', permission: 'ver_candidatos', Componente: ListaCandidatos },
+  { path: '/candidatos/nuevo', permission: 'crear_candidatos', Componente: NuevoCandidato },
+  { path: '/candidatos/:candidatoId', permission: 'ver_candidatos', Componente: PerfilCandidato },
+  { path: '/historico', permission: 'ver_candidatos', Componente: BaseHistorica },
+
+  { path: '/seleccion/dashboard', permission: 'evaluar_candidatos', Componente: DashboardSeleccion },
+  {
+    path: '/seleccion/agenda',
+    permissions: ['agendar_entrevistas', 'registrar_asistencia', 'evaluar_candidatos'],
+    Componente: Agenda,
+  },
+  { path: '/seleccion/evaluaciones', permission: 'ver_candidatos', Componente: Decisiones },
+
+  { path: '/usuarios', permission: 'ver_usuarios', Componente: GestionUsuarios },
+  { path: '/roles', permission: 'ver_usuarios', Componente: RolesPermisos },
+
+  // Sin permiso: cualquiera con sesión ve SUS propios desprendibles.
+  { path: '/desprendibles', Componente: Desprendibles },
+]
+
+export default function App() {
   return (
     <Router>
       <AuthProvider>
         <div className="min-h-screen bg-gray-50">
           <Routes>
-            {/* Ruta pública de login */}
             <Route path="/login" element={<Login />} />
-            
-            {/* Redirección inicial basada en rol */}
             <Route path="/" element={<RoleRedirect />} />
-            
-            {/* Rutas protegidas para reclutadores */}
-            <Route 
-              path="/hydra/reclutador/dashboard" 
-              element={
-                <ProtectedRoute permission="ver_dashboard">
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/hydra/reclutador/estadisticas" 
-              element={
-                <ProtectedRoute permission="ver_estadisticas">
-                  <Estadisticas />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/hydra/reclutador/candidatos" 
-              element={
-                <ProtectedRoute permission="ver_candidatos">
-                  <ListaCandidatos />
-                </ProtectedRoute>
-              } 
-            />
-            <Route
-              path="/hydra/reclutador/candidatos-total"
-              element={
-                <ProtectedRoute permission="ver_candidatos">
-                  <CandidatosTotal />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/hydra/reclutador/candidatos/nuevo" 
-              element={
-                <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
-                  <NuevoCandidato />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/hydra/reclutador/editar-candidato/:candidatoId" 
-              element={
-                <ProtectedRoute permission="editar_candidatos">
-                  <EditarCandidato />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/hydra/reclutador/candidato/:candidatoId" 
-              element={
-                <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
-                  <PerfilCandidato />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Rutas protegidas para selección */}
-            <Route 
-              path="/hydra/seleccion/candidatos" 
-              element={
-                <ProtectedRoute roles={['seleccion', 'administrador']}>
-                  <CandidatosSeleccion />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/hydra/seleccion/perfiles-aprobados" 
-              element={
-                <ProtectedRoute roles={['seleccion', 'administrador']}>
-                  <PerfilesAprobados />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/hydra/seleccion/perfiles-rechazados" 
-              element={
-                <ProtectedRoute roles={['seleccion', 'administrador']}>
-                  <PerfilesRechazados />
-                </ProtectedRoute>
-              } 
-            />
-            <Route
-              path="/hydra/seleccion/candidato/:candidatoId"
-              element={
-                <ProtectedRoute roles={['seleccion', 'administrador']}>
-                  <PerfilCandidato />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/hydra/seleccion/usuarios"
-              element={
-                <ProtectedRoute roles={['seleccion', 'administrador']}>
-                  <GestionUsuarios />
-                </ProtectedRoute>
-              }
-            />
 
-            {/* Rutas protegidas para administrador */}
-            <Route
-              path="/hydra/admin/reclutadores"
-              element={
-                <ProtectedRoute roles={['administrador']}>
-                  <GestionReclutadores />
-                </ProtectedRoute>
-              }
-            />
+            {PANTALLAS.map(({ path, permission, permissions, Componente }) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <Protegida permission={permission} permissions={permissions}>
+                    <Componente />
+                  </Protegida>
+                }
+              />
+            ))}
 
-            {/* Desprendibles — accesible para todos los roles */}
-            <Route
-              path="/hydra/desprendibles"
-              element={
-                <ProtectedRoute roles={['reclutador', 'seleccion', 'administrador']}>
-                  <DesprendiblesPage />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Rutas públicas para candidatos (con token) */}
-            <Route path="/candidato/hoja-vida/:token" element={<HojaVida />} />
-            <Route path="/candidato/datos-basicos/:token" element={<DatosBasicos />} />
-            <Route path="/candidato/estudios/:token" element={<Estudios />} />
-            <Route path="/candidato/experiencia/:token" element={<Experiencia />} />
-            <Route path="/candidato/personal/:token" element={<Personal />} />
-            <Route path="/candidato/consentimiento/:token" element={<Consentimiento />} />
+            {/* Formulario público del candidato: sin sesión, autorizado por el token. */}
+            <Route path="/candidato/formulario/:token" element={<FormularioCandidato />} />
+            <Route path="/candidato/:paso/:token" element={<RedirigirFormularioViejo />} />
+
+            {/* Las rutas viejas con prefijo por rol redirigen al inicio. */}
+            <Route path="/hydra/*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </AuthProvider>
     </Router>
   )
 }
-
-export default App

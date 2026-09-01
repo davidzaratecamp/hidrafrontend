@@ -4,35 +4,21 @@
 
 @layer base {
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     margin: 0;
     min-height: 100vh;
-    background-color: #f8fafc;
+    /* Gris cálido, no el azulado por defecto: un solo tinte de gris en todo
+       el proyecto, en vez de mezclar fríos y cálidos entre pantallas. */
+    background-color: #faf9f7;
+    /* Cifras alineadas en documentos, edades, fechas y montos: sin esto los
+       números "bailan" en las columnas de una tabla con fuente proporcional. */
+    font-variant-numeric: tabular-nums;
   }
-}
 
-@layer components {
-  .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
-  }
-  
-  .input-field {
-    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500;
-  }
-  
-  .card {
-    @apply bg-white rounded-lg shadow-md p-6;
-  }
-  
-  .sidebar-item {
-    @apply flex items-center px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 cursor-pointer;
-  }
-  
-  .sidebar-item.active {
-    @apply bg-blue-100 text-blue-700;
+  /* Foco visible y consistente en toda la app, más allá de los inputs que ya
+     traen su propio anillo: teclado primero. */
+  :focus-visible {
+    outline: 2px solid theme('colors.blue.500');
+    outline-offset: 2px;
   }
 }
