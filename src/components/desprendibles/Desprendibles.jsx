@@ -48,15 +48,23 @@ export default function Desprendibles() {
           />
         ) : (
           <ul className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-            {(meses ?? []).map(({ anio, mes, etiqueta }) => (
+            {(meses ?? []).map(({ anio, mes, etiqueta, disponible }) => (
               <li key={`${anio}-${mes}`} className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-900">{etiqueta}</span>
+                  <span className={`text-sm ${disponible ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {etiqueta}
+                  </span>
+                  {!disponible && (
+                    <span className="text-xs rounded-full bg-gray-100 text-gray-400 px-2 py-0.5">
+                      No disponible
+                    </span>
+                  )}
                 </div>
                 <Boton
                   variante="secundario"
                   className="!py-1.5"
+                  disabled={!disponible}
                   cargando={descargando === `${anio}-${mes}`}
                   onClick={() => descargar(anio, mes)}
                 >
@@ -71,23 +79,28 @@ export default function Desprendibles() {
   )
 }
 
-const NOMBRE_MES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-]
-
 /**
  * La API de nómina es externa y su forma no está bajo nuestro control: se
  * aceptan varias variantes en vez de asumir una sola.
+ *
+ * `month` llega como nombre en español ("septiembre"), no como número 1-12 —
+ * se pasa tal cual (nunca `Number(...)`), porque es lo que hay que reenviar
+ * después al endpoint de descarga. La API ya manda una `label` armada
+ * ("9. Septiembre 2026"); se usa directo en vez de reconstruirla.
  */
 function normalizar(respuesta) {
-  const lista = Array.isArray(respuesta) ? respuesta : (respuesta?.meses ?? [])
+  const lista = Array.isArray(respuesta) ? respuesta : (respuesta?.data ?? respuesta?.meses ?? [])
   return lista
     .map((item) => {
-      const anio = Number(item.anio ?? item.year ?? item.ano)
-      const mes = Number(item.mes ?? item.month)
+      const anio = item.anio ?? item.year ?? item.ano
+      const mes = item.mes ?? item.month
       if (!anio || !mes) return null
-      return { anio, mes, etiqueta: `${NOMBRE_MES[mes - 1] ?? mes} ${anio}` }
+      return {
+        anio,
+        mes,
+        etiqueta: item.label ?? item.etiqueta ?? `${mes} ${anio}`,
+        disponible: item.disponible ?? true,
+      }
     })
     .filter(Boolean)
 }
