@@ -151,3 +151,8 @@ temp/
 
 # Hot reload
 .hot
+
+# Claude Code: skills instalados localmente para este proyecto, no codigo
+# de la aplicacion (herramientas de diseno/generacion de imagenes).
+.claude/
+skills-lock.json

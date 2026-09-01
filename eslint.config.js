@@ -23,7 +23,16 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // El proyecto no usa eslint-plugin-react, así que el uso de una variable
+      // dentro de JSX no se detecta: un componente recibido por props y
+      // renderizado como <Icono /> aparece como "no usado".
+      // `varsIgnorePattern` ya cubría ese caso para variables; se extiende a los
+      // parámetros desestructurados, que siguen la misma convención
+      // (mayúscula inicial = componente).
+      'no-unused-vars': [
+        'error',
+        { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]' },
+      ],
     },
   },
 ])

@@ -1,338 +1,149 @@
-const getApiBaseUrl = () => {
-  return import.meta.env.DEV ? 'http://localhost:3000/api' : 'http://200.91.204.54:3000/api';
-};
+/**
+ * Cliente de la API.
+ *
+ * Cambios respecto a la versión anterior:
+ *   - La URL sale de `VITE_API_URL`, no de una IP escrita en el código
+ *     (`import.meta.env.DEV ? localhost : 'http://200.91.204.54:3000/api'`,
+ *     repetida además en AuthContext).
+ *   - TODOS los verbos exponen el error real del backend. Antes `get()` y
+ *     `post()` lanzaban solo `Error: 400`, descartando el mensaje que el
+ *     servidor sí enviaba: cualquier fallo de creación se veía en consola como
+ *     un número sin causa.
+ *   - El backend responde siempre con el mismo sobre — `{ ok, datos, meta }` o
+ *     `{ ok:false, error:{ codigo, mensaje, detalles } }` — así que el
+ *     desempaquetado y el manejo de error viven aquí una sola vez.
+ */
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+).replace(/\/$/, '')
 
-class ApiService {
-  
-  getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    
-    return headers;
-  }
-  
-  async get(endpoint) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return;
-        }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('GET Error:', error);
-      throw error;
-    }
+/** Error con el detalle que manda el backend, para que la UI pueda ramificar. */
+export class ApiError extends Error {
+  constructor({ mensaje, codigo, detalles, estado }) {
+    super(mensaje)
+    this.name = 'ApiError'
+    this.codigo = codigo
+    this.detalles = detalles
+    this.estado = estado
   }
 
-  async post(endpoint, data) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return;
-        }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('POST Error:', error);
-      throw error;
-    }
-  }
-
-  async put(endpoint, data) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PUT',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return;
-        }
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('PUT Error:', error);
-      throw error;
-    }
-  }
-
-  async validarToken(token) {
-    return this.get(`/candidato/token/${token}`);
-  }
-
-  async getCandidatosPorEstado(estado, page = 1, search = '') {
-    const params = new URLSearchParams({ page });
-    if (search) params.set('search', search);
-    return this.get(`/candidato/por-estado/${estado}?${params.toString()}`);
-  }
-
-  async getResumenEstados() {
-    return this.get('/candidato/resumen-estados');
-  }
-
-  async reenviarEmail(candidatoId) {
-    return this.post(`/candidato/reenviar-email/${candidatoId}`);
-  }
-
-  async crearCandidato(data) {
-    return this.post('/candidato/crear', data);
-  }
-
-  async editarCandidato(candidatoId, data) {
-    return this.put(`/candidato/editar/${candidatoId}`, data);
-  }
-
-  async cambiarEstadoCandidato(candidatoId, estado) {
-    return this.put(`/candidato/cambiar-estado/${candidatoId}`, { estado });
-  }
-
-  async actualizarFechaEntrevista(candidatoId, fecha) {
-    return this.put(`/candidato/fecha-entrevista/${candidatoId}`, { fecha_citacion_entrevista: fecha });
-  }
-
-  async marcarNoCitado(candidatoId, motivo) {
-    return this.put(`/candidato/no-citado/${candidatoId}`, { motivo });
-  }
-
-  async actualizarCitadoGestion(candidatoId, citado_gestion, estado_gestion_reclutamiento) {
-    return this.put(`/candidato/citado-gestion/${candidatoId}`, { citado_gestion, estado_gestion_reclutamiento });
-  }
-
-  async getReclutadoresActivos() {
-    return this.get('/candidato/reclutadores-activos');
-  }
-
-  async reasignarCandidato(candidatoId, nuevoReclutadorId) {
-    return this.put(`/candidato/reasignar/${candidatoId}`, { nuevo_reclutador_id: nuevoReclutadorId });
-  }
-
-  async getCatalogos() {
-    return this.get('/candidato/catalogos');
-  }
-
-  async actualizarHojaVida(token, data) {
-    return this.put(`/candidato/hoja-vida/${token}`, data);
-  }
-
-  async actualizarDatosBasicos(token, data) {
-    return this.put(`/candidato/datos-basicos/${token}`, data);
-  }
-
-  async actualizarEstudios(token, data) {
-    return this.put(`/candidato/estudios/${token}`, data);
-  }
-
-  async actualizarExperiencia(token, data) {
-    return this.put(`/candidato/experiencia/${token}`, data);
-  }
-
-  async actualizarPersonal(token, data) {
-    return this.put(`/candidato/personal/${token}`, data);
-  }
-
-  async actualizarConsentimiento(token, data) {
-    return this.put(`/candidato/consentimiento/${token}`, data);
-  }
-
-  async getPerfilCompleto(candidatoId) {
-    return this.get(`/candidato/perfil/${candidatoId}`);
-  }
-
-  // Estado de firma en FirmaCloud (hoja de vida + tratamiento de datos) — Hydra no guarda copia
-  // de los documentos, esto consulta en vivo cada vez.
-  async getEstadoFirma(candidatoId) {
-    return this.get(`/candidato/firma-estado/${candidatoId}`);
-  }
-
-  // Descarga (proxy) uno de los 2 documentos firmados. `tipo` = 'cv' | 'tratamiento'. Mismo
-  // patrón que getPdfDesprendible: devuelve el blob directo, no pasa por this.get (que espera
-  // JSON).
-  async getDocumentoFirmadoBlob(candidatoId, tipo) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/candidato/firma-documento/${candidatoId}/${tipo}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return;
-      }
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || `Error: ${response.status}`);
-    }
-    return response.blob();
-  }
-
-  // Guarda el estado y/o el documento de una o varias de las 4 verificaciones de antecedentes
-  // (ADRES/POL/COMP/PROCU) - multipart, no pasa por this.put (que siempre manda JSON). No se fija
-  // Content-Type a mano: el navegador arma el boundary del multipart automáticamente. Cada
-  // verificación se auto-guarda independiente (ver PerfilCandidato.jsx), así que formData suele
-  // traer solo los campos de UNA verificación por llamada.
-  async actualizarAntecedentes(candidatoId, formData) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/candidato/antecedentes/${candidatoId}`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return;
-      }
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || `Error: ${response.status}`);
-    }
-    return response.json();
-  }
-
-  // Descarga (proxy) el documento de antecedentes de una verificación puntual (tipo =
-  // 'adres'|'pol'|'comp'|'procu') - mismo patrón blob que getDocumentoFirmadoBlob.
-  async getDocumentoAntecedentesBlob(candidatoId, tipo) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/candidato/antecedentes/${candidatoId}/documento/${tipo}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return;
-      }
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || `Error: ${response.status}`);
-    }
-    return response.blob();
-  }
-
-  // Analytics
-  async getEstadosEnTiempo() {
-    return this.get('/candidato/analytics/estados-tiempo');
-  }
-
-  async getEstadisticasClientes() {
-    return this.get('/candidato/analytics/clientes');
-  }
-
-  async getEstadisticasCargos() {
-    return this.get('/candidato/analytics/cargos');
-  }
-
-  async getProgresoFormularios() {
-    return this.get('/candidato/analytics/progreso');
-  }
-
-  // Admin Methods
-  async delete(endpoint) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return;
-        }
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('DELETE Error:', error);
-      throw error;
-    }
-  }
-
-  async getMesesDesprendibles() {
-    return this.get('/desprendibles/meses');
-  }
-
-  async getPdfDesprendible(year, month) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/desprendibles/pdf/${year}/${month}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return;
-      }
-      const data = await response.json();
-      throw new Error(data.message ?? `Error: ${response.status}`);
-    }
-    return response.blob();
-  }
-
-  async getReclutadores() {
-    return this.get('/auth/admin/reclutadores');
-  }
-
-  async crearReclutador(data) {
-    return this.post('/auth/admin/reclutadores', data);
-  }
-
-  async eliminarReclutador(reclutadorId) {
-    return this.delete(`/auth/admin/reclutadores/${reclutadorId}`);
-  }
-
-  async reasignarCandidatos(reclutadorOrigenId, reclutadorDestinoId) {
-    return this.post('/auth/admin/reasignar-candidatos', {
-      reclutadorOrigenId,
-      reclutadorDestinoId
-    });
+  /** Errores de validación: lista de `{ campo, mensaje }`. */
+  get erroresDeCampo() {
+    return Array.isArray(this.detalles) ? this.detalles : []
   }
 }
 
-export default new ApiService();
+class ApiService {
+  #cabeceras(extra = {}) {
+    const token = localStorage.getItem('token')
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...extra,
+    }
+  }
+
+  #cerrarSesion() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login'
+    }
+  }
+
+  async #peticion(metodo, ruta, { cuerpo, formData, señal } = {}) {
+    const esFormData = formData instanceof FormData
+
+    let respuesta
+    try {
+      respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+        method: metodo,
+        // Con FormData el navegador debe poner el Content-Type (incluye el boundary).
+        headers: this.#cabeceras(esFormData ? {} : { 'Content-Type': 'application/json' }),
+        body: esFormData ? formData : cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
+        signal: señal,
+      })
+    } catch (error) {
+      if (error.name === 'AbortError') throw error
+      throw new ApiError({
+        mensaje: 'No se pudo conectar con el servidor',
+        codigo: 'SIN_CONEXION',
+        estado: 0,
+      })
+    }
+
+    if (respuesta.status === 401) {
+      this.#cerrarSesion()
+      throw new ApiError({
+        mensaje: 'Tu sesión expiró',
+        codigo: 'NO_AUTENTICADO',
+        estado: 401,
+      })
+    }
+
+    if (respuesta.status === 204) return { datos: null, meta: null }
+
+    // Descargas binarias (PDF de firma, soportes de antecedentes).
+    const tipo = respuesta.headers.get('content-type') ?? ''
+    if (respuesta.ok && !tipo.includes('application/json')) {
+      return { datos: await respuesta.blob(), meta: null }
+    }
+
+    const cuerpoRespuesta = await respuesta.json().catch(() => null)
+
+    if (!respuesta.ok) {
+      const error = cuerpoRespuesta?.error ?? {}
+      throw new ApiError({
+        mensaje: error.mensaje ?? `Error ${respuesta.status}`,
+        codigo: error.codigo ?? 'ERROR',
+        detalles: error.detalles,
+        estado: respuesta.status,
+      })
+    }
+
+    return { datos: cuerpoRespuesta?.datos ?? null, meta: cuerpoRespuesta?.meta ?? null }
+  }
+
+  /** Devuelve solo los datos. Para lo habitual. */
+  async get(ruta, opciones) {
+    return (await this.#peticion('GET', ruta, opciones)).datos
+  }
+
+  /** Devuelve datos y metadatos de paginación. */
+  async getConMeta(ruta, opciones) {
+    return this.#peticion('GET', ruta, opciones)
+  }
+
+  async post(ruta, cuerpo) {
+    return (await this.#peticion('POST', ruta, { cuerpo })).datos
+  }
+
+  async put(ruta, cuerpo) {
+    return (await this.#peticion('PUT', ruta, { cuerpo })).datos
+  }
+
+  async patch(ruta, cuerpo) {
+    return (await this.#peticion('PATCH', ruta, { cuerpo })).datos
+  }
+
+  async delete(ruta) {
+    return (await this.#peticion('DELETE', ruta)).datos
+  }
+
+  /** Subidas multipart (soportes de antecedentes). */
+  async postFormData(ruta, formData) {
+    return (await this.#peticion('POST', ruta, { formData })).datos
+  }
+
+  /** Construye un query string omitiendo los valores vacíos. */
+  qs(parametros) {
+    const limpios = Object.entries(parametros ?? {}).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    )
+    return limpios.length > 0 ? `?${new URLSearchParams(limpios)}` : ''
+  }
+}
+
+export const api = new ApiService()
+export default api
+export { API_BASE_URL }
