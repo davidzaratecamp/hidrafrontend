@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ClipboardCheck, Download, Eye, Mail, Phone, PhoneCall, UserCheck, UserPlus, Users } from 'lucide-react'
+import { CalendarPlus, ClipboardCheck, Download, Eye, Mail, Phone, PhoneCall, UserCheck, UserPlus, Users } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, BotonEnlace, Error, Etiqueta, Progreso } from '../ui'
-import { esCargoAgente, fecha, nombreDe } from '../ui/formato'
+import { claseBotonSeguimiento, esCargoAgente, fecha, nombreDe, resultadoSeguimiento } from '../ui/formato'
 import { Buscador, CeldaDoble, Filtros, Tabla } from '../ui/Tabla'
 import { useAuth } from '../../context/useAuth'
 import { useCatalogos } from '../../hooks/useCatalogos'
 import { useRecurso, useRecursoPaginado } from '../../hooks/useRecurso'
 import { useBusquedaDiferida } from '../../hooks/useBusquedaDiferida'
 import api from '../../services/api'
-import { ModalAsistencia, ModalSeguimiento } from '../seleccion/modales'
+import { ModalAsistencia, ModalRecitar, ModalSeguimiento } from '../seleccion/modales'
 import ModalEvaluacion from '../seleccion/ModalEvaluacion'
 import ModalDescargarExcel from '../seleccion/ModalDescargarExcel'
 
@@ -37,8 +37,19 @@ import ModalDescargarExcel from '../seleccion/ModalDescargarExcel'
  *
  * El orden lo sigue dando el catálogo (`orden` de `estados_candidato`), así que
  * las pestañas se leen en el orden del embudo, no en el de esta lista.
+ *
+ * "No Asistió" se agregó a propósito al lado de "Citado" (decisión de negocio,
+ * 2026-09-01): un candidato que falta a la entrevista sale del filtro
+ * "Citado" y aparece acá, con la opción de volver a citarlo (ver columna
+ * Acciones) — antes no había dónde encontrarlo sin usar "Todos".
  */
-const SIEMPRE_VISIBLES = ['formularios_enviados', 'formularios_completados', 'citado', 'entrevistado']
+const SIEMPRE_VISIBLES = [
+  'formularios_enviados',
+  'formularios_completados',
+  'citado',
+  'no_asistio',
+  'entrevistado',
+]
 
 /** Los seis pasos del formulario que llena el candidato. */
 const PASOS_FORMULARIO = 6
@@ -67,9 +78,24 @@ export default function ListaCandidatos() {
     [pagina, estado, cliente, busqueda, soloAgentes]
   )
 
-  const { datos: resumen } = useRecurso(() => api.get('/candidatos/resumen-estados'), [busqueda], {
-    inicial: [],
-  })
+  const { datos: resumen, recargar: recargarResumen } = useRecurso(
+    () => api.get('/candidatos/resumen-estados'),
+    [busqueda],
+    { inicial: [] }
+  )
+
+  /**
+   * La tabla y los conteos de las pestañas son dos peticiones independientes
+   * (`useRecurso` distintos). Cualquier acción que mueva a un candidato de
+   * estado —asistencia, recitar, evaluar— tiene que refrescar las dos, o el
+   * número de cada pestaña queda desactualizado hasta que alguien recargue la
+   * página a mano.
+   */
+  function recargarTodo() {
+    setModal(null)
+    recargar()
+    recargarResumen()
+  }
 
   const visibles = (resumen ?? []).filter(
     (e) => e.total > 0 || SIEMPRE_VISIBLES.includes(e.estado)
@@ -163,14 +189,28 @@ export default function ListaCandidatos() {
           {/* Seguimiento antes de la entrevista: si respondió la llamada y/o
               el WhatsApp/Global de confirmación. Mismo criterio que
               "Asistencia" — solo tiene sentido mientras la citación sigue
-              pendiente. */}
+              pendiente. El botón se pinta verde/rojo según el resultado. */}
           {c.estado === 'citado' && hasPermission('registrar_asistencia') && (
             <Boton
               variante="secundario"
-              className="!py-1.5 whitespace-nowrap"
+              className={`!py-1.5 whitespace-nowrap ${claseBotonSeguimiento(
+                resultadoSeguimiento(c.seguimiento_llamada, c.seguimiento_whatsapp)
+              )}`}
               onClick={() => setModal({ tipo: 'seguimiento', candidato: c })}
             >
               <PhoneCall className="h-4 w-4" /> Seguimiento
+            </Boton>
+          )}
+          {/* No asistió a la entrevista anterior: la máquina de estados ya
+              permite reagendar (no_asistio -> citado), esto solo abre la
+              puerta desde la interfaz. */}
+          {c.estado === 'no_asistio' && hasPermission('agendar_entrevistas') && (
+            <Boton
+              variante="secundario"
+              className="!py-1.5 whitespace-nowrap"
+              onClick={() => setModal({ tipo: 'recitar', candidato: c })}
+            >
+              <CalendarPlus className="h-4 w-4" /> Citar
             </Boton>
           )}
           {/* Reenviar el link del formulario: disponible para cualquier
@@ -309,10 +349,7 @@ export default function ListaCandidatos() {
             primer_apellido: modal.candidato.primer_apellido,
           }}
           onCerrar={() => setModal(null)}
-          onListo={() => {
-            setModal(null)
-            recargar()
-          }}
+          onListo={recargarTodo}
         />
       )}
 
@@ -324,10 +361,19 @@ export default function ListaCandidatos() {
             primer_apellido: modal.candidato.primer_apellido,
           }}
           onCerrar={() => setModal(null)}
-          onListo={() => {
-            setModal(null)
-            recargar()
+          onListo={recargarTodo}
+        />
+      )}
+
+      {modal?.tipo === 'recitar' && (
+        <ModalRecitar
+          candidato={{
+            candidato_id: modal.candidato.id,
+            primer_nombre: modal.candidato.primer_nombre,
+            primer_apellido: modal.candidato.primer_apellido,
           }}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
         />
       )}
 
@@ -336,10 +382,7 @@ export default function ListaCandidatos() {
           candidatoId={modal.candidato.id}
           nombre={nombreDe(modal.candidato)}
           onCerrar={() => setModal(null)}
-          onListo={() => {
-            setModal(null)
-            recargar()
-          }}
+          onListo={recargarTodo}
         />
       )}
 

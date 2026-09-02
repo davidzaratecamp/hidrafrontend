@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Boton, Error, Modal } from '../ui'
+import { Boton, Error, Etiqueta, Modal } from '../ui'
 import { AreaTexto, Seleccion, Texto } from '../ui/campos'
+import { resultadoSeguimiento } from '../ui/formato'
 import { useCatalogos } from '../../hooks/useCatalogos'
 import api from '../../services/api'
 
@@ -220,6 +221,17 @@ export function ModalSeguimiento({ candidato, onCerrar, onListo }) {
           </div>
         ))}
 
+        {/* Resultado combinado: responder por cualquiera de los dos canales
+            ya cuenta como seguimiento exitoso. Se muestra en vivo mientras se
+            eligen las opciones, para que quede claro antes de guardar. */}
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+          <p className="text-sm font-medium text-gray-700">Resultado del seguimiento</p>
+          <Etiqueta
+            texto={{ si: 'Sí', no: 'No', pendiente: 'Pendiente' }[resultadoSeguimiento(llamada, whatsapp)]}
+            tono={{ si: 'verde', no: 'rojo', pendiente: 'ambar' }[resultadoSeguimiento(llamada, whatsapp)]}
+          />
+        </div>
+
         <Error mensaje={error} />
         <div className="flex justify-end gap-2">
           <Boton variante="secundario" onClick={onCerrar}>
@@ -231,6 +243,57 @@ export function ModalSeguimiento({ candidato, onCerrar, onListo }) {
             disabled={cargandoInicial || (llamada === null && whatsapp === null)}
           >
             Guardar
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Vuelve a citar a un candidato que no asistió a la entrevista anterior.
+ *
+ * Mismo endpoint que citar por primera vez: la máquina de estados ya permite
+ * la transición `no_asistio -> citado` ("se reagenda", ver
+ * db/seeds/002_estados_y_transiciones.sql) y la citación anterior, al estar
+ * resuelta (no pendiente), no bloquea una nueva — el backend ya lo soportaba,
+ * solo faltaba el punto de entrada en la interfaz.
+ */
+export function ModalRecitar({ candidato, onCerrar, onListo }) {
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function confirmar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.candidato_id}/citacion`, {})
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal
+      titulo="Volver a citar"
+      descripcion={`${candidato.primer_nombre} ${candidato.primer_apellido}`}
+      onCerrar={onCerrar}
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-gray-600">
+          El candidato vuelve a la etapa "Citado", con una citación nueva e independiente de
+          la anterior — la inasistencia previa queda en su historial, no se pierde.
+        </p>
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar} disabled={guardando}>
+            Cancelar
+          </Boton>
+          <Boton onClick={confirmar} cargando={guardando}>
+            Citar de nuevo
           </Boton>
         </div>
       </div>

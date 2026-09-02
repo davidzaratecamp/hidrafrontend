@@ -40,3 +40,37 @@ export function numero(valor) {
 export function esCargoAgente(cargo) {
   return /agente/i.test(cargo ?? '')
 }
+
+/**
+ * Resultado combinado del seguimiento antes de la entrevista: responde a
+ * cualquiera de los dos canales (llamada o WhatsApp/Global) cuenta como "sí".
+ * Solo es "no" cuando se intentaron los dos y ninguno respondió. Mientras
+ * falte intentar alguno (valor `null`) y no haya un "sí" ya confirmado, el
+ * resultado sigue "pendiente" — no se marca "no" antes de agotar los canales.
+ *
+ * Misma lógica en el modal que la registra (`ModalSeguimiento`) y en la
+ * columna que la muestra (Agenda de entrevistas), para que nunca diverjan.
+ */
+export function resultadoSeguimiento(llamada, whatsapp) {
+  if (llamada === true || whatsapp === true) return 'si'
+  if (llamada === false && whatsapp === false) return 'no'
+  return 'pendiente'
+}
+
+/**
+ * Clases para pintar el botón "Seguimiento" del listado según el resultado:
+ * verde si respondió, rojo si no. "Pendiente" no se distingue con color —
+ * se queda con el aspecto neutro del botón — porque todavía no hay nada que
+ * comunicar. Usa `!` (important) para ganarle a las clases de la variante
+ * "secundario" de `Boton`, mismo mecanismo que ya usa el proyecto para estos
+ * overrides puntuales (ver `className="!py-1.5"` en los botones de acción).
+ */
+export function claseBotonSeguimiento(resultado) {
+  if (resultado === 'si') {
+    return '!border-emerald-300 !bg-emerald-50 !text-emerald-700 hover:!bg-emerald-100'
+  }
+  if (resultado === 'no') {
+    return '!border-red-300 !bg-red-50 !text-red-700 hover:!bg-red-100'
+  }
+  return ''
+}
