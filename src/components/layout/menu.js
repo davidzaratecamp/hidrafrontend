@@ -3,7 +3,6 @@ import {
   Archive,
   BarChart3,
   Briefcase,
-  CalendarClock,
   ClipboardCheck,
   FileText,
   KeyRound,
@@ -98,18 +97,12 @@ export const SECCIONES = [
   {
     titulo: 'Selección',
     items: [
-      {
-        path: '/seleccion/agenda',
-        icon: CalendarClock,
-        label: 'Agenda de entrevistas',
-        // Ni Reclutamiento ni Selección lo ven ya en su menú (pedidos
-        // explícitos, 2026-09-01): ambos conservan permiso sobre la RUTA
-        // (`agendar_entrevistas`/`registrar_asistencia` uno, `evaluar_candidatos`
-        // el otro), así que si algo la enlaza directamente sigue funcionando.
-        // Se gatea por `ver_usuarios` —que hoy solo tiene Administrador— en
-        // vez de por rol, mismo patrón que "Mi trazabilidad" más arriba.
-        permiso: 'ver_usuarios',
-      },
+      // "Agenda de entrevistas" se quitó del menú también para Administrador
+      // (pedido explícito, 2026-09-02) — ya no le quedaba ningún rol que la
+      // viera: Reclutamiento y Selección la habían perdido antes (2026-09-01)
+      // porque citar, asistencia y seguimiento se hacen desde Candidatos/
+      // Candidatos Staff. La ruta (`/seleccion/agenda`) sigue viva por si
+      // algo la enlaza directo, mismo patrón que el resto de este archivo.
       {
         path: '/seleccion/evaluaciones',
         icon: ClipboardCheck,
