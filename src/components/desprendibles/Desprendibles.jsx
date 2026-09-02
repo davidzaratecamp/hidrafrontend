@@ -47,51 +47,65 @@ export default function Desprendibles() {
           mensaje="No hay desprendibles disponibles. Si crees que es un error, verifica con administración que tu cédula esté registrada."
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {meses.map(({ anio, mes, etiqueta, disponible }) => (
             <div
               key={`${anio}-${mes}`}
-              className={`flex flex-col gap-4 rounded-xl border bg-white p-5 ${
-                disponible ? 'border-gray-200' : 'border-gray-100'
+              className={`group flex flex-col overflow-hidden rounded-2xl border bg-white transition-shadow ${
+                disponible ? 'border-gray-200 hover:shadow-lg' : 'border-gray-100'
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div
-                  className={`rounded-xl p-3 ${
-                    disponible ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+              <div
+                className={`relative flex h-32 items-center justify-center ${
+                  disponible
+                    ? 'bg-gradient-to-br from-blue-50 to-blue-100/60'
+                    : 'bg-gray-50'
+                }`}
+              >
+                <FileText
+                  className={`h-14 w-14 transition-transform ${
+                    disponible ? 'text-blue-500 group-hover:scale-105' : 'text-gray-300'
                   }`}
-                >
-                  <FileText className="h-5 w-5" />
-                </div>
+                  strokeWidth={1.25}
+                />
                 {!disponible && (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
+                  <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-400 shadow-sm">
                     No disponible
                   </span>
                 )}
               </div>
 
-              <p className={`text-sm font-medium ${disponible ? 'text-gray-900' : 'text-gray-400'}`}>
-                {etiqueta}
-              </p>
+              <div className="flex flex-1 flex-col gap-4 p-5">
+                <div>
+                  <p
+                    className={`text-base font-semibold ${
+                      disponible ? 'text-gray-900' : 'text-gray-400'
+                    }`}
+                  >
+                    {etiqueta}
+                  </p>
+                  <p className="mt-0.5 text-sm text-gray-500">Comprobante de pago</p>
+                </div>
 
-              <div className="mt-auto flex gap-2">
-                <Boton
-                  variante="secundario"
-                  className="!py-1.5 flex-1"
-                  disabled={!disponible}
-                  onClick={() => setPrevisualizando({ anio, mes, etiqueta })}
-                >
-                  <Eye className="h-4 w-4" /> Ver
-                </Boton>
-                <Boton
-                  variante="secundario"
-                  className="!py-1.5 flex-1"
-                  disabled={!disponible}
-                  cargando={descargando === `${anio}-${mes}`}
-                  onClick={() => descargar(anio, mes)}
-                >
-                  <Download className="h-4 w-4" /> Descargar
-                </Boton>
+                <div className="mt-auto flex gap-2">
+                  <Boton
+                    variante="secundario"
+                    className="flex-1"
+                    disabled={!disponible}
+                    onClick={() => setPrevisualizando({ anio, mes, etiqueta })}
+                  >
+                    <Eye className="h-4 w-4" /> Ver
+                  </Boton>
+                  <Boton
+                    variante="secundario"
+                    className="flex-1"
+                    disabled={!disponible}
+                    cargando={descargando === `${anio}-${mes}`}
+                    onClick={() => descargar(anio, mes)}
+                  >
+                    <Download className="h-4 w-4" /> Descargar
+                  </Boton>
+                </div>
               </div>
             </div>
           ))}
