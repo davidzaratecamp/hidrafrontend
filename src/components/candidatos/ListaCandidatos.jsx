@@ -1,6 +1,22 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarPlus, ClipboardCheck, Download, Eye, Mail, Phone, PhoneCall, UserCheck, UserPlus, Users } from 'lucide-react'
+import {
+  CalendarPlus,
+  ClipboardCheck,
+  Download,
+  Eye,
+  FileCheck2,
+  Gavel,
+  Handshake,
+  Mail,
+  Phone,
+  PhoneCall,
+  UserCheck,
+  UserCheck2,
+  UserCog,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, BotonEnlace, Error, Etiqueta, Progreso } from '../ui'
 import { claseBotonSeguimiento, esCargoAgente, fecha, nombreDe, resultadoSeguimiento } from '../ui/formato'
@@ -10,7 +26,17 @@ import { useCatalogos } from '../../hooks/useCatalogos'
 import { useRecurso, useRecursoPaginado } from '../../hooks/useRecurso'
 import { useBusquedaDiferida } from '../../hooks/useBusquedaDiferida'
 import api from '../../services/api'
-import { ModalAsistencia, ModalRecitar, ModalSeguimiento } from '../seleccion/modales'
+import {
+  ModalAprobacionEntrevista,
+  ModalAprobacionJefeInmediato,
+  ModalAprobacionPruebaTecnica,
+  ModalAsistencia,
+  ModalCitarCandidato,
+  ModalContratacion,
+  ModalDecision,
+  ModalRecitar,
+  ModalSeguimiento,
+} from '../seleccion/modales'
 import ModalEvaluacion from '../seleccion/ModalEvaluacion'
 import ModalDescargarExcel from '../seleccion/ModalDescargarExcel'
 
@@ -22,6 +48,12 @@ import ModalDescargarExcel from '../seleccion/ModalDescargarExcel'
  * eso un candidato ya evaluado desaparecía de la pantalla.
  *
  * El filtrado por dueño lo aplica el backend: aquí no hay lógica de visibilidad.
+ *
+ * `segmento="staff"` (usado por `CandidatosStaff.jsx`, menú "Candidatos
+ * Staff") fija el filtro a cargos distintos de Agente en vez del toggle "Solo
+ * Agentes" (decisión de negocio, 2026-09-02): reemplaza a la vista "Sin
+ * evaluación (no Agente)" que tenía "Clínica Agentes" — de ahí que el botón
+ * "Decidir" viva acá también, para quien tiene `tomar_decision_final`.
  */
 
 /**
@@ -51,10 +83,19 @@ const SIEMPRE_VISIBLES = [
   'entrevistado',
 ]
 
+/**
+ * En "Candidatos Staff" (`segmento="staff"`) se quitan estas cuatro pestañas
+ * de logística de citación (pedido explícito, 2026-09-02): esa gestión ya
+ * vive en "Candidatos" (Reclutamiento); Staff se enfoca desde "Entrevistado"
+ * en adelante, con las aprobaciones nuevas. Un candidato en uno de estos
+ * estados sigue viéndose en "Todos", solo no tiene pestaña dedicada.
+ */
+const OCULTOS_STAFF = ['formularios_enviados', 'formularios_completados', 'citado', 'no_asistio']
+
 /** Los seis pasos del formulario que llena el candidato. */
 const PASOS_FORMULARIO = 6
 
-export default function ListaCandidatos() {
+export default function ListaCandidatos({ segmento }) {
   const navegar = useNavigate()
   const { hasPermission } = useAuth()
   const { catalogos } = useCatalogos()
@@ -70,12 +111,16 @@ export default function ListaCandidatos() {
   const volverAPrimera = () => setPagina(1)
   const { texto, setTexto, busqueda } = useBusquedaDiferida(350, volverAPrimera)
 
+  // "Candidatos Staff" fija el filtro de cargo: no hay toggle que lo cambie.
+  const filtroCargo =
+    segmento === 'staff' ? { staff: true } : { agentes: soloAgentes || undefined }
+
   const { items, meta, cargando, error, recargar } = useRecursoPaginado(
     () =>
       api.getConMeta(
-        `/candidatos${api.qs({ pagina, porPagina: 20, estado, cliente, busqueda, agentes: soloAgentes || undefined })}`
+        `/candidatos${api.qs({ pagina, porPagina: 20, estado, cliente, busqueda, ...filtroCargo })}`
       ),
-    [pagina, estado, cliente, busqueda, soloAgentes]
+    [pagina, estado, cliente, busqueda, soloAgentes, segmento]
   )
 
   const { datos: resumen, recargar: recargarResumen } = useRecurso(
@@ -97,9 +142,10 @@ export default function ListaCandidatos() {
     recargarResumen()
   }
 
-  const visibles = (resumen ?? []).filter(
-    (e) => e.total > 0 || SIEMPRE_VISIBLES.includes(e.estado)
-  )
+  const visibles = (resumen ?? []).filter((e) => {
+    if (segmento === 'staff' && OCULTOS_STAFF.includes(e.estado)) return false
+    return e.total > 0 || SIEMPRE_VISIBLES.includes(e.estado)
+  })
   const total = (resumen ?? []).reduce((suma, e) => suma + e.total, 0)
 
   const pestanas = [
@@ -174,6 +220,22 @@ export default function ListaCandidatos() {
       alineacion: 'right',
       render: (c) => (
         <div className="flex justify-end gap-2">
+          {/* Citar por primera vez: la máquina de estados ya permite
+              'nuevo' -> 'citado' y 'formularios_completados' -> 'citado' (esta
+              última sin pasar por el resto del embudo tampoco), pero hasta
+              ahora no había botón para hacerlo desde acá — la única forma era
+              marcar "Citado: Sí" al crear el candidato, sin poder corregirlo
+              después (pedido explícito, 2026-09-02). */}
+          {['nuevo', 'formularios_completados'].includes(c.estado) &&
+            hasPermission('agendar_entrevistas') && (
+              <Boton
+                variante="secundario"
+                className="!py-1.5 whitespace-nowrap"
+                onClick={() => setModal({ tipo: 'citar', candidato: c })}
+              >
+                <CalendarPlus className="h-4 w-4" /> Citar
+              </Boton>
+            )}
           {/* Candidato citado y aún sin resolver: mismo criterio que la Agenda
               (`asistio === 'pendiente'`), solo que aquí no se trae la citación
               completa, así que se infiere del estado del candidato. */}
@@ -216,8 +278,11 @@ export default function ListaCandidatos() {
           {/* Reenviar el link del formulario: disponible para cualquier
               candidato (Agente o no) y en cualquier etapa del embudo, igual
               que el botón del perfil. Reenviar no pierde lo que el candidato
-              ya diligenció: el backend lo precarga (ver `abrirFormulario`). */}
-          {hasPermission('reenviar_emails') && (
+              ya diligenció: el backend lo precarga (ver `abrirFormulario`).
+              Fuera de "Candidatos Staff" (decisión de negocio, 2026-09-02):
+              esa vista se llenó con las aprobaciones de abajo, y el reenvío
+              de formulario sigue disponible en "Candidatos". */}
+          {segmento !== 'staff' && hasPermission('reenviar_emails') && (
             <Boton
               variante="secundario"
               className="!py-1.5 whitespace-nowrap"
@@ -238,6 +303,85 @@ export default function ListaCandidatos() {
               <ClipboardCheck className="h-4 w-4" /> Evaluar
             </Boton>
           )}
+          {/* Contraparte de "Evaluar" para cargo distinto a Agente: pasa
+              directo de "entrevistado" a decisión final, sin evaluación (ver
+              seleccion.service.js::decidir). Antes vivía en "Clínica Agentes"
+              (vista "Sin evaluación (no Agente)"), se movió acá con el resto
+              de la gestión de Staff (decisión de negocio, 2026-09-02). */}
+          {c.estado === 'entrevistado' && hasPermission('tomar_decision_final') && !esCargoAgente(c.cargo) && (
+            <Boton
+              variante="secundario"
+              className="!py-1.5 whitespace-nowrap"
+              onClick={() => setModal({ tipo: 'decidir', candidato: c })}
+            >
+              <Gavel className="h-4 w-4" /> Decidir
+            </Boton>
+          )}
+          {/* Las tres aprobaciones previas a la decisión final, exclusivas de
+              "Candidatos Staff" (decisión de negocio, 2026-09-02): la
+              contraparte, para Staff, de la evaluación de 5 criterios que
+              solo aplica a Agente en "Clínica Agentes". Informativas — no
+              bloquean "Decidir" — se pintan verde/rojo según lo ya guardado,
+              mismo mecanismo que "Seguimiento". */}
+          {segmento === 'staff' &&
+            c.estado === 'entrevistado' &&
+            hasPermission('tomar_decision_final') &&
+            !esCargoAgente(c.cargo) && (
+              <>
+                <Boton
+                  variante="secundario"
+                  className={`!py-1.5 whitespace-nowrap ${claseBotonSeguimiento(
+                    c.aprobacion_entrevista === true ? 'si' : c.aprobacion_entrevista === false ? 'no' : 'pendiente'
+                  )}`}
+                  onClick={() => setModal({ tipo: 'aprobacion-entrevista', candidato: c })}
+                >
+                  <UserCheck2 className="h-4 w-4" /> Aprobación entrevista
+                </Boton>
+                <Boton
+                  variante="secundario"
+                  className={`!py-1.5 whitespace-nowrap ${claseBotonSeguimiento(
+                    c.aprobacion_jefe_inmediato === true
+                      ? 'si'
+                      : c.aprobacion_jefe_inmediato === false
+                        ? 'no'
+                        : 'pendiente'
+                  )}`}
+                  onClick={() => setModal({ tipo: 'aprobacion-jefe-inmediato', candidato: c })}
+                >
+                  <UserCog className="h-4 w-4" /> Aprobación jefe inmediato
+                </Boton>
+                <Boton
+                  variante="secundario"
+                  className={`!py-1.5 whitespace-nowrap ${claseBotonSeguimiento(
+                    c.aprobacion_prueba_tecnica === true
+                      ? 'si'
+                      : c.aprobacion_prueba_tecnica === false
+                        ? 'no'
+                        : 'pendiente'
+                  )}`}
+                  onClick={() => setModal({ tipo: 'aprobacion-prueba-tecnica', candidato: c })}
+                >
+                  <FileCheck2 className="h-4 w-4" /> Aprobación prueba técnica
+                </Boton>
+              </>
+            )}
+          {/* Contratación: paso posterior a la decisión final aprobada,
+              exclusivo Staff — contraparte de "Citar a formación" para
+              Agente en "Clínica Agentes". */}
+          {segmento === 'staff' &&
+            c.estado === 'aprobado_final' &&
+            hasPermission('tomar_decision_final') &&
+            !esCargoAgente(c.cargo) && (
+              <Boton
+                variante="secundario"
+                className={`!py-1.5 whitespace-nowrap ${claseBotonSeguimiento(
+                  c.contratacion === true ? 'si' : c.contratacion === false ? 'no' : 'pendiente'
+                )}`}
+                onClick={() => setModal({ tipo: 'contratacion', candidato: c })}
+              >
+                <Handshake className="h-4 w-4" /> Contratación
+              </Boton>
+            )}
           <BotonEnlace to={`/candidatos/${c.id}`} className="!py-1.5 whitespace-nowrap">
             <Eye className="h-4 w-4" /> Ver perfil
           </BotonEnlace>
@@ -248,8 +392,12 @@ export default function ListaCandidatos() {
 
   return (
     <Layout
-      titulo="Candidatos"
-      descripcion="Tu cartera de candidatos por estado"
+      titulo={segmento === 'staff' ? 'Candidatos Staff' : 'Candidatos'}
+      descripcion={
+        segmento === 'staff'
+          ? 'Candidatos de campañas distintas a Agente'
+          : 'Tu cartera de candidatos por estado'
+      }
       acciones={
         <div className="flex gap-2">
           {/* Todos los candidatos de la base nueva, sin filtrar por citación
@@ -299,21 +447,25 @@ export default function ListaCandidatos() {
             ))}
           </select>
           {/* Filtro dedicado: la evaluación de entrevista solo aplica a este
-              cargo, así que es el que Selección necesita ubicar rápido. */}
-          <button
-            type="button"
-            onClick={() => {
-              setSoloAgentes((v) => !v)
-              volverAPrimera()
-            }}
-            className={`rounded-lg border px-3 py-2 text-sm transition-all duration-150 active:scale-[0.97] ${
-              soloAgentes
-                ? 'border-blue-500 bg-blue-50 font-medium text-blue-700'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            Solo Agentes
-          </button>
+              cargo, así que es el que Selección necesita ubicar rápido. Con
+              `segmento` fijo (p. ej. "Candidatos Staff") el cargo ya no se
+              elige acá, así que el toggle no tiene nada que hacer. */}
+          {!segmento && (
+            <button
+              type="button"
+              onClick={() => {
+                setSoloAgentes((v) => !v)
+                volverAPrimera()
+              }}
+              className={`rounded-lg border px-3 py-2 text-sm transition-all duration-150 active:scale-[0.97] ${
+                soloAgentes
+                  ? 'border-blue-500 bg-blue-50 font-medium text-blue-700'
+                  : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+              }`}
+            >
+              Solo Agentes
+            </button>
+          )}
         </div>
 
         <Error mensaje={error} onReintentar={recargar} />
@@ -377,10 +529,58 @@ export default function ListaCandidatos() {
         />
       )}
 
+      {modal?.tipo === 'citar' && (
+        <ModalCitarCandidato
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
+        />
+      )}
+
       {modal?.tipo === 'evaluar' && (
         <ModalEvaluacion
           candidatoId={modal.candidato.id}
           nombre={nombreDe(modal.candidato)}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
+        />
+      )}
+
+      {modal?.tipo === 'decidir' && (
+        <ModalDecision
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
+        />
+      )}
+
+      {modal?.tipo === 'aprobacion-entrevista' && (
+        <ModalAprobacionEntrevista
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
+        />
+      )}
+
+      {modal?.tipo === 'aprobacion-jefe-inmediato' && (
+        <ModalAprobacionJefeInmediato
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
+        />
+      )}
+
+      {modal?.tipo === 'aprobacion-prueba-tecnica' && (
+        <ModalAprobacionPruebaTecnica
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={recargarTodo}
+        />
+      )}
+
+      {modal?.tipo === 'contratacion' && (
+        <ModalContratacion
+          candidato={modal.candidato}
           onCerrar={() => setModal(null)}
           onListo={recargarTodo}
         />

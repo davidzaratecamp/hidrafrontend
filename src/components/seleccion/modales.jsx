@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Boton, Error, Etiqueta, Modal } from '../ui'
 import { AreaTexto, Seleccion, Texto } from '../ui/campos'
-import { resultadoSeguimiento } from '../ui/formato'
+import { nombreDe, resultadoSeguimiento } from '../ui/formato'
 import { useCatalogos } from '../../hooks/useCatalogos'
 import api from '../../services/api'
 
@@ -294,6 +294,410 @@ export function ModalRecitar({ candidato, onCerrar, onListo }) {
           </Boton>
           <Boton onClick={confirmar} cargando={guardando}>
             Citar de nuevo
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Cita por primera vez a un candidato que quedó sin citación —típicamente
+ * porque se registró con "Citado: No" (queda en "nuevo", sin pasar por
+ * Selección) o completó el formulario sin que lo citaran ("formularios
+ * completados"). Mismo endpoint que `ModalRecitar`, pero sin la mención a una
+ * inasistencia previa que acá no existe.
+ *
+ * Antes de esto, la única forma de arreglar un "Citado: No" era desde el
+ * formulario de creación —el campo queda de solo lectura al editar (ver
+ * `CandidatoCampos.jsx`), porque "citado" no es una marca suelta: crea una
+ * citación real y mueve el estado (ver `citar.js`)—. Este botón es el
+ * arreglo correcto: la transición `nuevo -> citado` y `formularios_completados
+ * -> citado` ya eran válidas en la máquina de estados, solo faltaba el punto
+ * de entrada en la interfaz (pedido explícito, 2026-09-02).
+ */
+export function ModalCitarCandidato({ candidato, onCerrar, onListo }) {
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function confirmar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.id}/citacion`, {})
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal titulo="Citar candidato" descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
+      <div className="space-y-4">
+        <p className="text-sm text-gray-600">
+          El candidato pasa a la etapa "Citado", con una citación nueva.
+        </p>
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar} disabled={guardando}>
+            Cancelar
+          </Boton>
+          <Boton onClick={confirmar} cargando={guardando}>
+            Citar
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Decisión final: aprobar o rechazar al candidato, con razón obligatoria al
+ * rechazar. Compartido entre "Clínica Agentes" (evaluados/rechazados) y el
+ * listado general de Candidatos/Candidatos Staff, donde un candidato de cargo
+ * distinto a Agente llega a "entrevistado" y pasa directo acá, sin evaluación
+ * (ver seleccion.service.js::decidir).
+ */
+export function ModalDecision({ candidato, onCerrar, onListo }) {
+  const [aprobacion, setAprobacion] = useState(null)
+  const [razon, setRazon] = useState('')
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.id}/decision-final`, {
+        aprobacion,
+        razon: razon.trim() || undefined,
+      })
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal titulo="Decisión final" descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { v: true, t: 'Aprobar', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+            { v: false, t: 'Rechazar', clase: 'border-red-500 bg-red-50 text-red-700' },
+          ].map(({ v, t, clase }) => (
+            <button
+              key={t}
+              onClick={() => setAprobacion(v)}
+              className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                aprobacion === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <AreaTexto
+          etiqueta="Razón"
+          requerido={aprobacion === false}
+          filas={3}
+          value={razon}
+          onChange={(e) => setRazon(e.target.value)}
+          ayuda={
+            aprobacion === false
+              ? 'Obligatoria al rechazar: queda en el expediente.'
+              : 'Opcional al aprobar.'
+          }
+        />
+
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar}>
+            Cancelar
+          </Boton>
+          <Boton
+            variante={aprobacion === false ? 'peligro' : 'primario'}
+            onClick={guardar}
+            cargando={guardando}
+            disabled={aprobacion === null || (aprobacion === false && !razon.trim())}
+          >
+            Confirmar decisión
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Aprobación de entrevista: paso previo e informativo a la decisión final.
+ * Guarda Sí/No (con razón obligatoria si es No) pero no mueve el estado del
+ * candidato — a diferencia de `ModalDecision`. Aplica tanto a Agente
+ * (evaluado, en "aprobado"/"rechazado") como a Staff ("entrevistado", sin
+ * evaluación de criterios) — ver seleccion.service.js::aprobarEntrevista.
+ */
+export function ModalAprobacionEntrevista({ candidato, onCerrar, onListo }) {
+  const [aprobacion, setAprobacion] = useState(
+    candidato.aprobacion_entrevista === null || candidato.aprobacion_entrevista === undefined
+      ? null
+      : Boolean(candidato.aprobacion_entrevista)
+  )
+  const [razon, setRazon] = useState(candidato.aprobacion_entrevista_razon ?? '')
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.id}/aprobacion-entrevista`, {
+        aprobacion,
+        razon: razon.trim() || undefined,
+      })
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal titulo="Aprobación entrevista" descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { v: true, t: 'Sí', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+            { v: false, t: 'No', clase: 'border-red-500 bg-red-50 text-red-700' },
+          ].map(({ v, t, clase }) => (
+            <button
+              key={t}
+              onClick={() => setAprobacion(v)}
+              className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                aprobacion === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <AreaTexto
+          etiqueta="Razón"
+          requerido={aprobacion === false}
+          filas={3}
+          value={razon}
+          onChange={(e) => setRazon(e.target.value)}
+          ayuda={
+            aprobacion === false
+              ? 'Obligatoria si no se aprueba la entrevista.'
+              : 'Opcional al aprobar.'
+          }
+        />
+
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar}>
+            Cancelar
+          </Boton>
+          <Boton
+            variante={aprobacion === false ? 'peligro' : 'primario'}
+            onClick={guardar}
+            cargando={guardando}
+            disabled={aprobacion === null || (aprobacion === false && !razon.trim())}
+          >
+            Guardar
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * Aprobación del jefe inmediato o de la prueba técnica: mismo patrón que
+ * `ModalAprobacionEntrevista`, exclusivo Staff. Un solo componente
+ * parametrizado por `titulo`/`endpoint`/`campoActual`/`campoRazon` en vez de
+ * repetir el mismo formulario dos veces.
+ */
+function ModalAprobacionSimple({ candidato, titulo, endpoint, campoActual, campoRazon, onCerrar, onListo }) {
+  const [aprobacion, setAprobacion] = useState(
+    candidato[campoActual] === null || candidato[campoActual] === undefined
+      ? null
+      : Boolean(candidato[campoActual])
+  )
+  const [razon, setRazon] = useState(candidato[campoRazon] ?? '')
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.id}/${endpoint}`, {
+        aprobacion,
+        razon: razon.trim() || undefined,
+      })
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal titulo={titulo} descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { v: true, t: 'Sí', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+            { v: false, t: 'No', clase: 'border-red-500 bg-red-50 text-red-700' },
+          ].map(({ v, t, clase }) => (
+            <button
+              key={t}
+              onClick={() => setAprobacion(v)}
+              className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                aprobacion === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <AreaTexto
+          etiqueta="Razón"
+          requerido={aprobacion === false}
+          filas={3}
+          value={razon}
+          onChange={(e) => setRazon(e.target.value)}
+          ayuda={aprobacion === false ? 'Obligatoria si es No.' : 'Opcional al aprobar.'}
+        />
+
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar}>
+            Cancelar
+          </Boton>
+          <Boton
+            variante={aprobacion === false ? 'peligro' : 'primario'}
+            onClick={guardar}
+            cargando={guardando}
+            disabled={aprobacion === null || (aprobacion === false && !razon.trim())}
+          >
+            Guardar
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+export function ModalAprobacionJefeInmediato({ candidato, onCerrar, onListo }) {
+  return (
+    <ModalAprobacionSimple
+      candidato={candidato}
+      titulo="Aprobación jefe inmediato"
+      endpoint="aprobacion-jefe-inmediato"
+      campoActual="aprobacion_jefe_inmediato"
+      campoRazon="aprobacion_jefe_inmediato_razon"
+      onCerrar={onCerrar}
+      onListo={onListo}
+    />
+  )
+}
+
+export function ModalAprobacionPruebaTecnica({ candidato, onCerrar, onListo }) {
+  return (
+    <ModalAprobacionSimple
+      candidato={candidato}
+      titulo="Aprobación prueba técnica"
+      endpoint="aprobacion-prueba-tecnica"
+      campoActual="aprobacion_prueba_tecnica"
+      campoRazon="aprobacion_prueba_tecnica_razon"
+      onCerrar={onCerrar}
+      onListo={onListo}
+    />
+  )
+}
+
+/**
+ * Contratación: paso posterior e informativo a la decisión final aprobada,
+ * exclusivo Staff — contraparte de "citar a formación" para cargo Agente.
+ */
+export function ModalContratacion({ candidato, onCerrar, onListo }) {
+  const [contratado, setContratado] = useState(
+    candidato.contratacion === null || candidato.contratacion === undefined
+      ? null
+      : Boolean(candidato.contratacion)
+  )
+  const [razon, setRazon] = useState(candidato.contratacion_razon ?? '')
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function guardar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.id}/contratacion`, {
+        contratado,
+        razon: razon.trim() || undefined,
+      })
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal titulo="Contratación" descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { v: true, t: 'Sí', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+            { v: false, t: 'No', clase: 'border-red-500 bg-red-50 text-red-700' },
+          ].map(({ v, t, clase }) => (
+            <button
+              key={t}
+              onClick={() => setContratado(v)}
+              className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                contratado === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <AreaTexto
+          etiqueta="Razón"
+          requerido={contratado === false}
+          filas={3}
+          value={razon}
+          onChange={(e) => setRazon(e.target.value)}
+          ayuda={contratado === false ? 'Obligatoria si no se contrata.' : 'Opcional al contratar.'}
+        />
+
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar}>
+            Cancelar
+          </Boton>
+          <Boton
+            variante={contratado === false ? 'peligro' : 'primario'}
+            onClick={guardar}
+            cargando={guardando}
+            disabled={contratado === null || (contratado === false && !razon.trim())}
+          >
+            Guardar
           </Boton>
         </div>
       </div>
