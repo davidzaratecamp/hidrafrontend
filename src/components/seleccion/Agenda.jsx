@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom'
 import { CalendarClock, CalendarPlus, ClipboardCheck, Download, PhoneCall, UserCheck } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, Error, Etiqueta } from '../ui'
-import { esCargoAgente, fecha } from '../ui/formato'
+import { claseBotonSeguimiento, esCargoAgente, fecha, resultadoSeguimiento } from '../ui/formato'
 import { CeldaDoble, Filtros, Tabla } from '../ui/Tabla'
 import { useAuth } from '../../context/useAuth'
 import { useRecursoPaginado } from '../../hooks/useRecurso'
 import api from '../../services/api'
-import { ModalAsistencia, ModalCitar, ModalSeguimiento } from './modales'
+import { ModalAsistencia, ModalCitar, ModalRecitar, ModalSeguimiento } from './modales'
 import ModalDescargarExcel from './ModalDescargarExcel'
 import PuntajeEvaluacion from './PuntajeEvaluacion'
 import ModalEvaluacion from './ModalEvaluacion'
@@ -34,6 +34,9 @@ const FILTROS = [
 
 const TONO = { asistio: 'verde', no_asistio: 'rojo', pendiente: 'ambar' }
 const TEXTO = { asistio: 'Asistió', no_asistio: 'No asistió' }
+
+const TONO_SEGUIMIENTO = { si: 'verde', no: 'rojo', pendiente: 'ambar' }
+const TEXTO_SEGUIMIENTO = { si: 'Sí', no: 'No', pendiente: 'Pendiente' }
 
 export default function Agenda() {
   const { hasPermission } = useAuth()
@@ -92,6 +95,17 @@ export default function Agenda() {
       render: (c) => <Etiqueta texto={TEXTO[c.asistio] ?? 'Pendiente'} tono={TONO[c.asistio]} />,
     },
     {
+      // Solo tiene sentido mientras la citación sigue pendiente: una vez
+      // resuelta la asistencia, el seguimiento previo deja de ser relevante.
+      clave: 'seguimiento',
+      titulo: 'Seguimiento',
+      render: (c) => {
+        if (c.asistio !== 'pendiente') return <span className="text-gray-300">—</span>
+        const resultado = resultadoSeguimiento(c.seguimiento_llamada, c.seguimiento_whatsapp)
+        return <Etiqueta texto={TEXTO_SEGUIMIENTO[resultado]} tono={TONO_SEGUIMIENTO[resultado]} />
+      },
+    },
+    {
       // Columna "Evaluación": el puntaje de la entrevista, cuando ya se evaluó.
       clave: 'evaluacion',
       titulo: 'Evaluación',
@@ -114,14 +128,30 @@ export default function Agenda() {
             </Boton>
           )}
           {/* Seguimiento antes de la entrevista: si respondió la llamada y/o
-              el WhatsApp/Global de confirmación, mientras sigue pendiente. */}
+              el WhatsApp/Global de confirmación, mientras sigue pendiente. El
+              botón se pinta verde/rojo según el resultado, para verlo sin
+              abrir el modal. */}
           {c.asistio === 'pendiente' && hasPermission('registrar_asistencia') && (
             <Boton
               variante="secundario"
-              className="!py-1.5"
+              className={`!py-1.5 ${claseBotonSeguimiento(
+                resultadoSeguimiento(c.seguimiento_llamada, c.seguimiento_whatsapp)
+              )}`}
               onClick={() => setModal({ tipo: 'seguimiento', candidato: c })}
             >
               <PhoneCall className="h-4 w-4" /> Seguimiento
+            </Boton>
+          )}
+          {/* No asistió a esta citación: la máquina de estados ya permite
+              reagendar (no_asistio -> citado), esto abre la puerta desde la
+              interfaz. */}
+          {c.asistio === 'no_asistio' && hasPermission('agendar_entrevistas') && (
+            <Boton
+              variante="secundario"
+              className="!py-1.5"
+              onClick={() => setModal({ tipo: 'recitar', candidato: c })}
+            >
+              <CalendarPlus className="h-4 w-4" /> Citar
             </Boton>
           )}
           {/* Evaluar solo tiene sentido tras la entrevista, y solo para cargo
@@ -225,6 +255,13 @@ export default function Agenda() {
       )}
       {modal?.tipo === 'seguimiento' && (
         <ModalSeguimiento
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={cerrarYRecargar}
+        />
+      )}
+      {modal?.tipo === 'recitar' && (
+        <ModalRecitar
           candidato={modal.candidato}
           onCerrar={() => setModal(null)}
           onListo={cerrarYRecargar}
