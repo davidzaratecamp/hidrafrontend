@@ -3,7 +3,9 @@ import { Eye, FileSignature } from 'lucide-react'
 import { Boton, Cargando, Error, Etiqueta, ModalDocumento } from '../../ui'
 import { fecha } from '../../ui/formato'
 import { useRecurso } from '../../../hooks/useRecurso'
+import { useAuth } from '../../../context/useAuth'
 import api from '../../../services/api'
+import ModalFirmarHojaVida from './ModalFirmarHojaVida'
 
 /** Citaciones, evaluaciones, decisión final y estado de la firma electrónica. */
 
@@ -26,6 +28,8 @@ const TONO_FIRMA = { pending: 'ambar', viewed: 'azul', signed: 'verde' }
 const TEXTO_FIRMA = { pending: 'Pendiente de firma', viewed: 'Visto', signed: 'Firmado' }
 
 export default function ExpedienteSeleccion({ candidatoId }) {
+  const { hasPermission } = useAuth()
+
   const { datos, cargando, error } = useRecurso(
     () => api.get(`/seleccion/candidatos/${candidatoId}/expediente`),
     [candidatoId]
@@ -33,7 +37,7 @@ export default function ExpedienteSeleccion({ candidatoId }) {
 
   // La firma puede no existir todavía: su ausencia no es un error de pantalla,
   // así que se pide aparte y se traga el fallo.
-  const { datos: firma } = useRecurso(
+  const { datos: firma, recargar: recargarFirma } = useRecurso(
     () => api.get(`/firma/${candidatoId}/estado`).catch(() => null),
     [candidatoId]
   )
@@ -41,6 +45,7 @@ export default function ExpedienteSeleccion({ candidatoId }) {
   // 'cv' | 'tratamiento' | null — cuál de los dos documentos se está
   // previsualizando ahora mismo.
   const [previsualizando, setPrevisualizando] = useState(null)
+  const [firmando, setFirmando] = useState(false)
 
   if (error) return <Error mensaje={error} />
   if (cargando || !datos) return <Cargando />
@@ -135,17 +140,40 @@ export default function ExpedienteSeleccion({ candidatoId }) {
                 tono={TONO_FIRMA[firma.proveedor?.status]}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Boton variante="secundario" onClick={() => setPrevisualizando('cv')}>
                 <Eye className="h-4 w-4" /> Hoja de vida
               </Boton>
               <Boton variante="secundario" onClick={() => setPrevisualizando('tratamiento')}>
                 <Eye className="h-4 w-4" /> Tratamiento de datos
               </Boton>
+              {firma.proveedor?.status === 'signed' && hasPermission('firmar_hoja_vida') && (
+                <Boton onClick={() => setFirmando(true)}>
+                  <FileSignature className="h-4 w-4" />
+                  {firma.proveedor?.psicologo_signed_at ? 'Volver a firmar' : 'Firmar hoja de vida'}
+                </Boton>
+              )}
             </div>
+            {firma.proveedor?.psicologo_signed_at && (
+              <p className="w-full text-xs text-gray-500">
+                Firmado por Selección: {firma.proveedor.psicologo_signed_by ?? '—'} ·{' '}
+                {fecha(firma.proveedor.psicologo_signed_at, true)}
+              </p>
+            )}
           </div>
         )}
       </Panel>
+
+      {firmando && (
+        <ModalFirmarHojaVida
+          candidatoId={candidatoId}
+          onFirmado={() => {
+            setFirmando(false)
+            recargarFirma()
+          }}
+          onCerrar={() => setFirmando(false)}
+        />
+      )}
 
       {previsualizando && (
         <ModalDocumento
