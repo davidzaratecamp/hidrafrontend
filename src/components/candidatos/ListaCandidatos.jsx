@@ -305,18 +305,24 @@ export default function ListaCandidatos({ segmento }) {
           )}
           {/* Contraparte de "Evaluar" para cargo distinto a Agente: pasa
               directo de "entrevistado" a decisión final, sin evaluación (ver
-              seleccion.service.js::decidir). Antes vivía en "Clínica Agentes"
-              (vista "Sin evaluación (no Agente)"), se movió acá con el resto
-              de la gestión de Staff (decisión de negocio, 2026-09-02). */}
-          {c.estado === 'entrevistado' && hasPermission('tomar_decision_final') && !esCargoAgente(c.cargo) && (
-            <Boton
-              variante="secundario"
-              className="!py-1.5 whitespace-nowrap"
-              onClick={() => setModal({ tipo: 'decidir', candidato: c })}
-            >
-              <Gavel className="h-4 w-4" /> Decidir
-            </Boton>
-          )}
+              seleccion.service.js::decidir). Exclusivo de "Candidatos Staff"
+              (decisión de negocio, 2026-09-02): con las tres aprobaciones de
+              abajo ya viviendo ahí, "Decidir" en el listado general quedaba
+              duplicado — hay dos lugares dedicados para decidir (acá para
+              Staff, "Clínica Agentes" para Agente) y "Candidatos" no debe ser
+              un tercero. */}
+          {segmento === 'staff' &&
+            c.estado === 'entrevistado' &&
+            hasPermission('tomar_decision_final') &&
+            !esCargoAgente(c.cargo) && (
+              <Boton
+                variante="secundario"
+                className="!py-1.5 whitespace-nowrap"
+                onClick={() => setModal({ tipo: 'decidir', candidato: c })}
+              >
+                <Gavel className="h-4 w-4" /> Decidir
+              </Boton>
+            )}
           {/* Las tres aprobaciones previas a la decisión final, exclusivas de
               "Candidatos Staff" (decisión de negocio, 2026-09-02): la
               contraparte, para Staff, de la evaluación de 5 criterios que
