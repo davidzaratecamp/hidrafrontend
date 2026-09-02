@@ -72,7 +72,12 @@ class ApiService {
       })
     }
 
-    if (respuesta.status === 401) {
+    // Un 401 solo significa "tu sesión expiró" si HABÍA una sesión (token guardado) que
+    // el servidor acaba de rechazar. Un intento de login fallido (credenciales inválidas)
+    // también responde 401, pero sin token previo — ahí no hay sesión que expirar, así que se
+    // deja pasar al manejo de error normal de abajo, que expone el mensaje real del backend
+    // ("Credenciales inválidas") en vez de uno genérico y engañoso.
+    if (respuesta.status === 401 && localStorage.getItem('token')) {
       this.#cerrarSesion()
       throw new ApiError({
         mensaje: 'Tu sesión expiró',
