@@ -146,12 +146,6 @@ export default function CandidatoCampos({ datos, set, errorDe, catalogos, modo =
           value={datos.fuenteReclutamiento ?? ''}
           onChange={(e) => set({ fuenteReclutamiento: e.target.value })}
         />
-        <Seleccion
-          etiqueta="Observación de la llamada"
-          opciones={catalogos.tipificaciones_llamada}
-          value={datos.tipificacionLlamada ?? ''}
-          onChange={(e) => set({ tipificacionLlamada: e.target.value })}
-        />
       </Seccion>
     </>
   )
