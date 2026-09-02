@@ -328,9 +328,14 @@ export default function ListaCandidatos({ segmento }) {
               contraparte, para Staff, de la evaluación de 5 criterios que
               solo aplica a Agente en "Clínica Agentes". Informativas — no
               bloquean "Decidir" — se pintan verde/rojo según lo ya guardado,
-              mismo mecanismo que "Seguimiento". */}
+              mismo mecanismo que "Seguimiento".
+              También visibles ya con "Aprobado Final" (no solo
+              "Entrevistado"), para poder corregir una aprobación que se
+              guardó mal (pedido explícito, 2026-09-02) — el backend acepta
+              el mismo endpoint en ese estado (ver
+              seleccion.service.js::ESTADOS_STAFF_APROBACION_EDITABLE). */}
           {segmento === 'staff' &&
-            c.estado === 'entrevistado' &&
+            ['entrevistado', 'aprobado_final'].includes(c.estado) &&
             hasPermission('tomar_decision_final') &&
             !esCargoAgente(c.cargo) && (
               <>
