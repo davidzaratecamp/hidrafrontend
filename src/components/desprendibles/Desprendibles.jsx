@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Download, FileText } from 'lucide-react'
+import { Download, Eye, FileText } from 'lucide-react'
 import Layout from '../layout/Layout'
-import { Boton, Cargando, Error, Vacio } from '../ui'
+import { Boton, Cargando, Error, ModalDocumento, Vacio } from '../ui'
 import api from '../../services/api'
 import { useRecurso } from '../../hooks/useRecurso'
 import { abrirBlob } from '../../utils/descargar'
@@ -15,6 +15,7 @@ import { abrirBlob } from '../../utils/descargar'
 export default function Desprendibles() {
   const [descargando, setDescargando] = useState(null)
   const [errorDescarga, setErrorDescarga] = useState(null)
+  const [previsualizando, setPrevisualizando] = useState(null)
 
   const { datos: meses, cargando, error: errorCarga } = useRecurso(
     async () => normalizar(await api.get('/desprendibles/meses')),
@@ -36,45 +37,74 @@ export default function Desprendibles() {
 
   return (
     <Layout titulo="Desprendibles de nómina" descripcion="Tus comprobantes de pago">
-      <div className="max-w-2xl space-y-4">
-        <Error mensaje={errorCarga ?? errorDescarga} />
+      <Error mensaje={errorCarga ?? errorDescarga} />
 
-        {cargando ? (
-          <Cargando />
-        ) : (meses ?? []).length === 0 ? (
-          <Vacio
-            icono={FileText}
-            mensaje="No hay desprendibles disponibles. Si crees que es un error, verifica con administración que tu cédula esté registrada."
-          />
-        ) : (
-          <ul className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-            {(meses ?? []).map(({ anio, mes, etiqueta, disponible }) => (
-              <li key={`${anio}-${mes}`} className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-gray-400" />
-                  <span className={`text-sm ${disponible ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {etiqueta}
-                  </span>
-                  {!disponible && (
-                    <span className="text-xs rounded-full bg-gray-100 text-gray-400 px-2 py-0.5">
-                      No disponible
-                    </span>
-                  )}
+      {cargando ? (
+        <Cargando />
+      ) : (meses ?? []).length === 0 ? (
+        <Vacio
+          icono={FileText}
+          mensaje="No hay desprendibles disponibles. Si crees que es un error, verifica con administración que tu cédula esté registrada."
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {meses.map(({ anio, mes, etiqueta, disponible }) => (
+            <div
+              key={`${anio}-${mes}`}
+              className={`flex flex-col gap-4 rounded-xl border bg-white p-5 ${
+                disponible ? 'border-gray-200' : 'border-gray-100'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div
+                  className={`rounded-xl p-3 ${
+                    disponible ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  <FileText className="h-5 w-5" />
                 </div>
+                {!disponible && (
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-400">
+                    No disponible
+                  </span>
+                )}
+              </div>
+
+              <p className={`text-sm font-medium ${disponible ? 'text-gray-900' : 'text-gray-400'}`}>
+                {etiqueta}
+              </p>
+
+              <div className="mt-auto flex gap-2">
                 <Boton
                   variante="secundario"
-                  className="!py-1.5"
+                  className="!py-1.5 flex-1"
+                  disabled={!disponible}
+                  onClick={() => setPrevisualizando({ anio, mes, etiqueta })}
+                >
+                  <Eye className="h-4 w-4" /> Ver
+                </Boton>
+                <Boton
+                  variante="secundario"
+                  className="!py-1.5 flex-1"
                   disabled={!disponible}
                   cargando={descargando === `${anio}-${mes}`}
                   onClick={() => descargar(anio, mes)}
                 >
                   <Download className="h-4 w-4" /> Descargar
                 </Boton>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {previsualizando && (
+        <ModalDocumento
+          titulo={previsualizando.etiqueta}
+          cargar={() => api.get(`/desprendibles/${previsualizando.anio}/${previsualizando.mes}.pdf`)}
+          onCerrar={() => setPrevisualizando(null)}
+        />
+      )}
     </Layout>
   )
 }
