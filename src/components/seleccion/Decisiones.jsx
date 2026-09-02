@@ -1,30 +1,30 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ClipboardCheck, Download, Gavel } from 'lucide-react'
+import { ClipboardCheck, Download, Gavel, GraduationCap, UserCheck } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, Error, Etiqueta, Modal } from '../ui'
-import { esCargoAgente, fecha, nombreDe } from '../ui/formato'
+import { claseBotonSeguimiento, esCargoAgente, fecha, nombreDe } from '../ui/formato'
 import { CeldaDoble, Filtros, Tabla } from '../ui/Tabla'
 import { AreaTexto } from '../ui/campos'
 import { useAuth } from '../../context/useAuth'
 import { useRecursoPaginado } from '../../hooks/useRecurso'
 import api from '../../services/api'
+import { ModalAprobacionEntrevista, ModalDecision } from './modales'
 import ModalDescargarExcel from './ModalDescargarExcel'
 import PuntajeEvaluacion from './PuntajeEvaluacion'
 
 /**
- * Evaluaciones y decisión final.
+ * Clínica Agentes: evaluación (5 criterios) y decisión final de candidatos
+ * de cargo Agente.
  *
- * Sustituye a `EvaluacionEntrevista.jsx` y a las pantallas separadas de perfiles
- * aprobados y rechazados: son el mismo listado con distinto filtro de estado, y
- * el backend ya expone el estado como dato.
+ * Los candidatos de cargo distinto a Agente ya no tienen vista acá (decisión
+ * de negocio, 2026-09-02): pasan directo de "entrevistado" a decisión final
+ * sin evaluación, y esa acción vive ahora en "Candidatos Staff"
+ * (`ListaCandidatos.jsx` con `segmento="staff"`), junto con el resto de su
+ * gestión — no tenía sentido un filtro dedicado acá solo para eso.
  */
 
 const VISTAS = [
-  // La evaluación de 5 criterios solo aplica a cargo Agente (decisión de
-  // negocio, 2026-08-31): el resto de cargos llega "entrevistado" y pasa
-  // directo a decisión final, sin puntaje.
-  { clave: 'entrevistado', etiqueta: 'Sin evaluación (no Agente)', descripcion: 'Pasan directo a decisión final' },
   { clave: 'aprobado', etiqueta: 'Pendientes de decisión', descripcion: 'Aprobaron la evaluación' },
   { clave: 'rechazado', etiqueta: 'Rechazados en evaluación', descripcion: 'No alcanzaron el umbral' },
   { clave: 'aprobado_final', etiqueta: 'Aprobados', descripcion: 'Decisión final favorable' },
@@ -40,6 +40,8 @@ export default function Decisiones() {
   const [vista, setVista] = useState('aprobado')
   const [pagina, setPagina] = useState(1)
   const [decidiendo, setDecidiendo] = useState(null)
+  const [aprobandoEntrevista, setAprobandoEntrevista] = useState(null)
+  const [citandoFormacion, setCitandoFormacion] = useState(null)
   const [descargando, setDescargando] = useState(false)
 
   const { items, meta, cargando, error, recargar } = useRecursoPaginado(
@@ -115,24 +117,54 @@ export default function Decisiones() {
       clave: 'acciones',
       titulo: 'Acciones',
       alineacion: 'right',
-      // Decidir aplica a quien ya fue evaluado (aprobado/rechazado), y también
-      // a un "entrevistado" que no es cargo Agente (pasa directo, sin
-      // evaluación). Un "entrevistado" que SÍ es Agente todavía no tiene nada
-      // que decidir acá: le falta pasar por "Evaluar" en la Agenda.
-      render: (c) =>
-        puedeDecidir &&
-        (['aprobado', 'rechazado'].includes(c.estado) ||
-          (c.estado === 'entrevistado' && !esCargoAgente(c.cargo))) ? (
-          <Boton className="!py-1.5" onClick={() => setDecidiendo(c)}>
-            <Gavel className="h-4 w-4" /> Decidir
-          </Boton>
-        ) : null,
+      // Decidir aplica a quien ya fue evaluado (aprobado/rechazado). El
+      // "entrevistado" sin evaluación (cargo distinto a Agente) se decide
+      // desde "Candidatos Staff", no acá (ver comentario del componente).
+      render: (c) => (
+        <div className="flex justify-end gap-2">
+          {/* Aprobación de entrevista: paso previo e informativo a la decisión
+              final, solo cargo Agente (decisión de negocio, 2026-09-02). No
+              bloquea "Decidir" — por eso conviven los dos botones acá. */}
+          {puedeDecidir && esCargoAgente(c.cargo) && ['aprobado', 'rechazado'].includes(c.estado) && (
+            <Boton
+              variante="secundario"
+              className={`!py-1.5 ${claseBotonSeguimiento(
+                c.aprobacion_entrevista === true ? 'si' : c.aprobacion_entrevista === false ? 'no' : 'pendiente'
+              )}`}
+              onClick={() => setAprobandoEntrevista(c)}
+            >
+              <UserCheck className="h-4 w-4" /> Aprobación entrevista
+            </Boton>
+          )}
+          {puedeDecidir && ['aprobado', 'rechazado'].includes(c.estado) && (
+            <Boton className="!py-1.5" onClick={() => setDecidiendo(c)}>
+              <Gavel className="h-4 w-4" /> Decidir
+            </Boton>
+          )}
+          {/* Citar a formación: paso posterior e informativo a la decisión
+              final aprobada, solo cargo Agente desde que Staff tiene
+              "Contratación" en Candidatos Staff (decisión de negocio,
+              2026-09-02). Mismo patrón: no bloquea nada, solo queda
+              registrado. */}
+          {puedeDecidir && c.estado === 'aprobado_final' && esCargoAgente(c.cargo) && (
+            <Boton
+              variante="secundario"
+              className={`!py-1.5 ${claseBotonSeguimiento(
+                c.citado_formacion === true ? 'si' : c.citado_formacion === false ? 'no' : 'pendiente'
+              )}`}
+              onClick={() => setCitandoFormacion(c)}
+            >
+              <GraduationCap className="h-4 w-4" /> Citar a formación
+            </Boton>
+          )}
+        </div>
+      ),
     },
   ]
 
   return (
     <Layout
-      titulo="Evaluaciones"
+      titulo="Clínica Agentes"
       descripcion={actual?.descripcion}
       acciones={
         // El reporte de aprobados es el que tenía botón de descarga en la
@@ -178,6 +210,28 @@ export default function Decisiones() {
         />
       )}
 
+      {aprobandoEntrevista && (
+        <ModalAprobacionEntrevista
+          candidato={aprobandoEntrevista}
+          onCerrar={() => setAprobandoEntrevista(null)}
+          onListo={() => {
+            setAprobandoEntrevista(null)
+            recargar()
+          }}
+        />
+      )}
+
+      {citandoFormacion && (
+        <ModalCitarFormacion
+          candidato={citandoFormacion}
+          onCerrar={() => setCitandoFormacion(null)}
+          onListo={() => {
+            setCitandoFormacion(null)
+            recargar()
+          }}
+        />
+      )}
+
       {descargando && (
         <ModalDescargarExcel
           reporte="aprobados"
@@ -190,9 +244,18 @@ export default function Decisiones() {
   )
 }
 
-function ModalDecision({ candidato, onCerrar, onListo }) {
-  const [aprobacion, setAprobacion] = useState(null)
-  const [razon, setRazon] = useState('')
+/**
+ * Citar a formación: paso posterior e informativo a la decisión final
+ * aprobada. Guarda Sí/No (con razón obligatoria si es No) pero no mueve el
+ * estado del candidato — mismo criterio que `ModalAprobacionEntrevista`.
+ */
+function ModalCitarFormacion({ candidato, onCerrar, onListo }) {
+  const [citado, setCitado] = useState(
+    candidato.citado_formacion === null || candidato.citado_formacion === undefined
+      ? null
+      : Boolean(candidato.citado_formacion)
+  )
+  const [razon, setRazon] = useState(candidato.citado_formacion_razon ?? '')
   const [error, setError] = useState(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -200,8 +263,8 @@ function ModalDecision({ candidato, onCerrar, onListo }) {
     setGuardando(true)
     setError(null)
     try {
-      await api.post(`/seleccion/candidatos/${candidato.id}/decision-final`, {
-        aprobacion,
+      await api.post(`/seleccion/candidatos/${candidato.id}/citacion-formacion`, {
+        citado,
         razon: razon.trim() || undefined,
       })
       onListo()
@@ -213,18 +276,18 @@ function ModalDecision({ candidato, onCerrar, onListo }) {
   }
 
   return (
-    <Modal titulo="Decisión final" descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
+    <Modal titulo="Citar a formación" descripcion={nombreDe(candidato)} onCerrar={onCerrar}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           {[
-            { v: true, t: 'Aprobar', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
-            { v: false, t: 'Rechazar', clase: 'border-red-500 bg-red-50 text-red-700' },
+            { v: true, t: 'Sí', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+            { v: false, t: 'No', clase: 'border-red-500 bg-red-50 text-red-700' },
           ].map(({ v, t, clase }) => (
             <button
               key={t}
-              onClick={() => setAprobacion(v)}
+              onClick={() => setCitado(v)}
               className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
-                aprobacion === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                citado === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
               }`}
             >
               {t}
@@ -234,14 +297,14 @@ function ModalDecision({ candidato, onCerrar, onListo }) {
 
         <AreaTexto
           etiqueta="Razón"
-          requerido={aprobacion === false}
+          requerido={citado === false}
           filas={3}
           value={razon}
           onChange={(e) => setRazon(e.target.value)}
           ayuda={
-            aprobacion === false
-              ? 'Obligatoria al rechazar: queda en el expediente.'
-              : 'Opcional al aprobar.'
+            citado === false
+              ? 'Obligatoria si no se cita a formación.'
+              : 'Opcional al citar.'
           }
         />
 
@@ -251,15 +314,16 @@ function ModalDecision({ candidato, onCerrar, onListo }) {
             Cancelar
           </Boton>
           <Boton
-            variante={aprobacion === false ? 'peligro' : 'primario'}
+            variante={citado === false ? 'peligro' : 'primario'}
             onClick={guardar}
             cargando={guardando}
-            disabled={aprobacion === null || (aprobacion === false && !razon.trim())}
+            disabled={citado === null || (citado === false && !razon.trim())}
           >
-            Confirmar decisión
+            Guardar
           </Boton>
         </div>
       </div>
     </Modal>
   )
 }
+

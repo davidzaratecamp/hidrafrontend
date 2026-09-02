@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { ArrowRight, Mail, UserCog } from 'lucide-react'
+import { ArrowRight, Mail, Pencil, UserCog } from 'lucide-react'
 import Layout from '../layout/Layout'
-import { Boton, Cargando, Error, Etiqueta } from '../ui'
+import { Boton, BotonEnlace, Cargando, Error, Etiqueta } from '../ui'
 import { nombreDe } from '../ui/formato'
 import { useAuth } from '../../context/useAuth'
 import { useRecurso } from '../../hooks/useRecurso'
@@ -83,6 +83,11 @@ export default function PerfilCandidato() {
       descripcion={`${candidato.cliente} · ${candidato.cargo}`}
       acciones={
         <div className="flex flex-wrap gap-2">
+          {hasPermission('editar_candidatos') && (
+            <BotonEnlace to={`/candidatos/${candidatoId}/editar`}>
+              <Pencil className="h-4 w-4" /> Editar
+            </BotonEnlace>
+          )}
           {hasPermission('reenviar_emails') && (
             <Boton variante="secundario" onClick={enviarFormulario}>
               <Mail className="h-4 w-4" /> Enviar formulario

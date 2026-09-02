@@ -106,6 +106,25 @@ export default function ExpedienteSeleccion({ candidatoId }) {
         )}
       </Panel>
 
+      <Panel titulo="Aprobación de entrevista">
+        {datos.aprobacionEntrevista ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <Etiqueta
+                texto={datos.aprobacionEntrevista.aprobacion ? 'Aprobada' : 'No aprobada'}
+                tono={datos.aprobacionEntrevista.aprobacion ? 'verde' : 'rojo'}
+              />
+              {datos.aprobacionEntrevista.razon && (
+                <p className="mt-1.5 text-sm text-gray-600">{datos.aprobacionEntrevista.razon}</p>
+              )}
+            </div>
+            <span className="text-xs text-gray-500">{datos.aprobacionEntrevista.usuario}</span>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Sin registrar.</p>
+        )}
+      </Panel>
+
       <Panel titulo="Decisión final">
         {datos.decisionFinal ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -122,6 +141,25 @@ export default function ExpedienteSeleccion({ candidatoId }) {
           </div>
         ) : (
           <p className="text-sm text-gray-500">Pendiente.</p>
+        )}
+      </Panel>
+
+      <Panel titulo="Citación a formación">
+        {datos.citacionFormacion ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <Etiqueta
+                texto={datos.citacionFormacion.citado ? 'Citado' : 'No citado'}
+                tono={datos.citacionFormacion.citado ? 'verde' : 'rojo'}
+              />
+              {datos.citacionFormacion.razon && (
+                <p className="mt-1.5 text-sm text-gray-600">{datos.citacionFormacion.razon}</p>
+              )}
+            </div>
+            <span className="text-xs text-gray-500">{datos.citacionFormacion.usuario}</span>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Sin registrar.</p>
         )}
       </Panel>
 

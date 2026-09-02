@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, UserPlus } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, Cargando, Error } from '../ui'
-import { CampoFijo, Seccion, Seleccion, SiNo, Texto } from '../ui/campos'
-import { cargosDe, useCatalogos } from '../../hooks/useCatalogos'
+import { CampoFijo, Seccion } from '../ui/campos'
+import { useCatalogos } from '../../hooks/useCatalogos'
 import { useAuth } from '../../context/useAuth'
-import { fecha as formatearFecha } from '../ui/formato'
+import { fecha as formatearFecha, limpiarCamposCandidato } from '../ui/formato'
 import api from '../../services/api'
 import ModalPerfilHistorico from '../historico/ModalPerfilHistorico'
+import CandidatoCampos from './CandidatoCampos'
 
 /**
  * Registro de un candidato.
@@ -93,20 +94,6 @@ export default function NuevoCandidato() {
     }
   }, [datos.numeroDocumento])
 
-  /** Cambiar de cliente invalida el cargo: puede no estar habilitado en el nuevo. */
-  const cambiarCliente = (cliente) => set({ cliente, cargo: '' })
-
-  /**
-   * "Estado gestión reclutamiento" es la tipificación de POR QUÉ no se citó al
-   * candidato, así que solo aplica con Citado = No.
-   *
-   * Al cambiar la respuesta se borra lo que hubiera elegido: si no, un motivo de
-   * descarte seguiría viajando en el envío junto a un "Citado: Sí", oculto y sin
-   * forma de corregirlo desde la pantalla.
-   */
-  const cambiarCitado = (citado) =>
-    setDatos((d) => ({ ...d, citado, estadoGestion: citado === false ? d.estadoGestion : '' }))
-
   async function enviar(evento) {
     evento.preventDefault()
     setGuardando(true)
@@ -114,7 +101,7 @@ export default function NuevoCandidato() {
     setErrores({})
 
     try {
-      const candidato = await api.post('/candidatos', limpiar(datos))
+      const candidato = await api.post('/candidatos', limpiarCamposCandidato(datos))
       navegar(`/candidatos/${candidato.id}`, { replace: true })
     } catch (e) {
       setError(e.message)
@@ -146,68 +133,6 @@ export default function NuevoCandidato() {
             />
           </Seccion>
 
-          {/* CAMPAÑA · CARGO · NOMBRE · TIPO DE DOC · DOCUMENTO · EDAD · CORREO */}
-          <Seccion titulo="Candidato" columnas={3}>
-            <Seleccion
-              etiqueta="Campaña"
-              requerido
-              opciones={catalogos.clientes}
-              value={datos.cliente ?? ''}
-              onChange={(e) => cambiarCliente(e.target.value)}
-              error={errorDe('cliente')}
-            />
-            <Seleccion
-              etiqueta="Cargo"
-              requerido
-              disabled={!datos.cliente}
-              opciones={cargosDe(catalogos, datos.cliente)}
-              value={datos.cargo ?? ''}
-              onChange={(e) => set({ cargo: e.target.value })}
-              error={errorDe('cargo')}
-              vacio={datos.cliente ? 'Selecciona…' : 'Elige primero la campaña'}
-            />
-            <Texto
-              etiqueta="Nombre"
-              requerido
-              value={datos.nombreCompleto ?? ''}
-              onChange={(e) => set({ nombreCompleto: e.target.value })}
-              error={errorDe('nombreCompleto')}
-              ayuda="Nombre completo. Las dos últimas palabras se toman como apellidos."
-            />
-            <Seleccion
-              etiqueta="Tipo de documento"
-              requerido
-              opciones={catalogos.tipos_documento}
-              value={datos.tipoDocumento ?? ''}
-              onChange={(e) => set({ tipoDocumento: e.target.value })}
-              error={errorDe('tipoDocumento')}
-            />
-            <Texto
-              etiqueta="Documento"
-              inputMode="numeric"
-              value={datos.numeroDocumento ?? ''}
-              onChange={(e) => set({ numeroDocumento: e.target.value })}
-              error={errorDe('numeroDocumento')}
-            />
-            <Texto
-              etiqueta="Edad"
-              type="number"
-              min="14"
-              max="99"
-              value={datos.edad ?? ''}
-              onChange={(e) => set({ edad: e.target.value })}
-              error={errorDe('edad')}
-            />
-            <Texto
-              etiqueta="Correo"
-              type="email"
-              value={datos.email ?? ''}
-              onChange={(e) => set({ email: e.target.value })}
-              error={errorDe('email')}
-              ayuda="Sin correo no se le puede enviar el formulario."
-            />
-          </Seccion>
-
           {/* Alerta de duplicado: este documento ya aparece en el archivo del
               sistema anterior. No bloquea el registro — solo avisa, con la
               opción de revisar qué pasó la vez anterior antes de continuar. */}
@@ -234,70 +159,7 @@ export default function NuevoCandidato() {
             </div>
           )}
 
-          {/* CONTACTO → LLAMADA · WHATSAPP. Con 3 columnas los tres caben en
-              una sola fila, sin necesitar un relleno para alinear. */}
-          <Seccion titulo="Contacto" columnas={3}>
-            <Texto
-              etiqueta="Celular"
-              requerido
-              inputMode="tel"
-              value={datos.celular ?? ''}
-              onChange={(e) => set({ celular: e.target.value })}
-              error={errorDe('celular')}
-            />
-            <SiNo
-              etiqueta="Llamada"
-              valor={datos.contactoLlamada}
-              onChange={(v) => set({ contactoLlamada: v })}
-            />
-            <SiNo
-              etiqueta="WhatsApp"
-              valor={datos.contactoWhatsapp}
-              onChange={(v) => set({ contactoWhatsapp: v })}
-            />
-          </Seccion>
-
-          {/* PERFIL · CITADO · ESTADO GESTIÓN RECLUTAMIENTO (este último solo con Citado = No) */}
-          <Seccion titulo="Gestión" columnas={3}>
-            <Texto
-              etiqueta="Perfil"
-              value={datos.perfil ?? ''}
-              onChange={(e) => set({ perfil: e.target.value })}
-              error={errorDe('perfil')}
-              maxLength={255}
-            />
-            <SiNo
-              etiqueta="Citado"
-              valor={datos.citado}
-              onChange={cambiarCitado}
-              ayuda="Con Sí queda citado, sin pasar por Selección."
-            />
-            {datos.citado === false && (
-              <Seleccion
-                etiqueta="Estado gestión reclutamiento"
-                opciones={catalogos.estados_gestion_reclutamiento}
-                value={datos.estadoGestion ?? ''}
-                onChange={(e) => set({ estadoGestion: e.target.value })}
-                ayuda="Por qué no se citó al candidato."
-              />
-            )}
-          </Seccion>
-
-          {/* Fuera del formato oficial, pero se siguen capturando. */}
-          <Seccion titulo="Otros datos" descripcion="No van en el formato oficial." columnas={3}>
-            <Seleccion
-              etiqueta="Fuente de reclutamiento"
-              opciones={catalogos.fuentes_reclutamiento}
-              value={datos.fuenteReclutamiento ?? ''}
-              onChange={(e) => set({ fuenteReclutamiento: e.target.value })}
-            />
-            <Seleccion
-              etiqueta="Observación de la llamada"
-              opciones={catalogos.tipificaciones_llamada}
-              value={datos.tipificacionLlamada ?? ''}
-              onChange={(e) => set({ tipificacionLlamada: e.target.value })}
-            />
-          </Seccion>
+          <CandidatoCampos datos={datos} set={set} errorDe={errorDe} catalogos={catalogos} modo="crear" />
         </div>
 
         <Error mensaje={error} />
@@ -327,14 +189,4 @@ function hoy() {
   const ahora = new Date()
   const dosDigitos = (n) => String(n).padStart(2, '0')
   return `${ahora.getFullYear()}-${dosDigitos(ahora.getMonth() + 1)}-${dosDigitos(ahora.getDate())}`
-}
-
-/** El backend distingue "no enviado" de "vacío": los vacíos no se mandan. */
-function limpiar(datos) {
-  const salida = {}
-  for (const [clave, valor] of Object.entries(datos)) {
-    if (valor === undefined || valor === null || valor === '') continue
-    salida[clave] = clave === 'edad' ? Number(valor) : valor
-  }
-  return salida
 }

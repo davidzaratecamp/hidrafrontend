@@ -21,6 +21,20 @@ export function nombreDe(c) {
 }
 
 /**
+ * El backend distingue "no enviado" de "vacío": los vacíos no se mandan.
+ * Compartido entre `NuevoCandidato.jsx` (POST, todo el objeto) y
+ * `EditarCandidato.jsx` (PUT, solo lo que cambió) — misma regla en los dos.
+ */
+export function limpiarCamposCandidato(datos) {
+  const salida = {}
+  for (const [clave, valor] of Object.entries(datos)) {
+    if (valor === undefined || valor === null || valor === '') continue
+    salida[clave] = clave === 'edad' ? Number(valor) : valor
+  }
+  return salida
+}
+
+/**
  * Número que llega del backend como string.
  *
  * MySQL devuelve DECIMAL como texto ('80.00'), y mostrarlo tal cual llena la

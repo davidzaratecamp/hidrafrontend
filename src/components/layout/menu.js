@@ -2,6 +2,7 @@ import {
   Activity,
   Archive,
   BarChart3,
+  Briefcase,
   CalendarClock,
   ClipboardCheck,
   FileText,
@@ -112,7 +113,21 @@ export const SECCIONES = [
       {
         path: '/seleccion/evaluaciones',
         icon: ClipboardCheck,
-        label: 'Evaluaciones',
+        // Antes "Evaluaciones" (renombrado, decisión de negocio, 2026-09-02):
+        // ya solo cubre cargo Agente (evaluación de 5 criterios + decisión
+        // final), desde que "Candidatos Staff" se llevó el resto.
+        label: 'Clínica Agentes',
+        permiso: 'evaluar_candidatos',
+      },
+      {
+        path: '/seleccion/staff',
+        icon: Briefcase,
+        label: 'Candidatos Staff',
+        // Reemplaza a la vista "Sin evaluación (no Agente)" que tenía
+        // "Clínica Agentes": todo candidato de cargo distinto a Agente, con
+        // el mismo permiso que esa pantalla —exclusivo de Selección y
+        // Administrador— para controlar quién VE el enlace (mismo patrón que
+        // el resto de este menú).
         permiso: 'evaluar_candidatos',
       },
     ],

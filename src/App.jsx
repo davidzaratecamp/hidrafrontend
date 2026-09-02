@@ -8,7 +8,9 @@ import MiTrazabilidad from './components/trazabilidad/MiTrazabilidad'
 import TrazabilidadEquipo from './components/trazabilidad/TrazabilidadEquipo'
 import TrazabilidadReclutador from './components/trazabilidad/TrazabilidadReclutador'
 import NuevoCandidato from './components/candidatos/NuevoCandidato'
+import EditarCandidato from './components/candidatos/EditarCandidato'
 import ListaCandidatos from './components/candidatos/ListaCandidatos'
+import CandidatosStaff from './components/candidatos/CandidatosStaff'
 import PerfilCandidato from './components/candidatos/PerfilCandidato'
 import Agenda from './components/seleccion/Agenda'
 import Decisiones from './components/seleccion/Decisiones'
@@ -70,6 +72,11 @@ const PANTALLAS = [
   { path: '/candidatos', permission: 'ver_candidatos', Componente: ListaCandidatos },
   { path: '/candidatos/nuevo', permission: 'crear_candidatos', Componente: NuevoCandidato },
   { path: '/candidatos/:candidatoId', permission: 'ver_candidatos', Componente: PerfilCandidato },
+  {
+    path: '/candidatos/:candidatoId/editar',
+    permission: 'editar_candidatos',
+    Componente: EditarCandidato,
+  },
   { path: '/historico', permission: 'ver_candidatos', Componente: BaseHistorica },
 
   // `ver_dashboard_seleccion`: exclusivo de Selección (migración 013) — antes
@@ -83,6 +90,9 @@ const PANTALLAS = [
     Componente: Agenda,
   },
   { path: '/seleccion/evaluaciones', permission: 'ver_candidatos', Componente: Decisiones },
+  // "Candidatos Staff": mismo permiso que "Candidatos" en la ruta (`ver_candidatos`),
+  // el menú es lo que lo restringe a Selección/Administrador (ver menu.js).
+  { path: '/seleccion/staff', permission: 'ver_candidatos', Componente: CandidatosStaff },
 
   { path: '/usuarios', permission: 'ver_usuarios', Componente: GestionUsuarios },
   { path: '/roles', permission: 'ver_usuarios', Componente: RolesPermisos },
