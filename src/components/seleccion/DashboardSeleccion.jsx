@@ -2,7 +2,7 @@ import { ClipboardList, RefreshCw, ScrollText } from 'lucide-react'
 import Layout from '../layout/Layout'
 import api from '../../services/api'
 import { useRecurso } from '../../hooks/useRecurso'
-import { BarraMedida, ResultadosAgentes, SerieMensual } from '../ui/graficas'
+import { BarraMedida, CandidatosPorAnalista, ResultadosAgentes, SerieMensual } from '../ui/graficas'
 import { NOMBRE_MES_ACTUAL, tonoOrdinal } from '../ui/graficaHelpers'
 
 /**
@@ -40,62 +40,6 @@ function TarjetaCola({ etiqueta, valor, descripcion, Icono, color }) {
  * dato, así que el color es la misma rampa ordinal del embudo de
  * conversión, no un tono nominal por criterio.
  */
-/**
- * Candidatos registrados por analista de Reclutamiento — no es de Selección
- * (ellos no registran), pero es la carga de trabajo que les va a llegar a
- * evaluar, y es la comparativa que le importa a Selección: quién les está
- * alimentando la cola. Nominal: el orden es solo para lectura (de mayor a
- * menor), no un dato en sí, así que un solo tono plano — nunca la rampa
- * ordinal del criterio de arriba.
- */
-const COLOR_ANALISTA = '#1d6091'
-const LIMITE_ANALISTAS = 8
-
-function agruparAnalistas(equipo) {
-  const conCandidatos = equipo
-    .map((r) => ({ nombre: r.nombreCompleto, total: r.creados.total }))
-    .filter((r) => r.total > 0)
-    .sort((a, b) => b.total - a.total)
-
-  if (conCandidatos.length <= LIMITE_ANALISTAS + 1) return conCandidatos
-
-  const principales = conCandidatos.slice(0, LIMITE_ANALISTAS)
-  const resto = conCandidatos.slice(LIMITE_ANALISTAS)
-  return [
-    ...principales,
-    { nombre: `${resto.length} analistas más`, total: resto.reduce((suma, r) => suma + r.total, 0) },
-  ]
-}
-
-function CandidatosPorAnalista({ equipo }) {
-  const filas = agruparAnalistas(equipo ?? [])
-
-  if (filas.length === 0) {
-    return <p className="text-sm text-gray-500">Todavía no hay candidatos registrados.</p>
-  }
-
-  const maximo = Math.max(...filas.map((f) => f.total))
-
-  return (
-    <ul className="space-y-3">
-      {filas.map((f) => (
-        <BarraMedida
-          key={f.nombre}
-          etiqueta={f.nombre}
-          valor={f.total}
-          maximo={maximo}
-          color={COLOR_ANALISTA}
-          tooltip={
-            <>
-              <span className="font-semibold">{f.total}</span> candidatos registrados
-            </>
-          }
-        />
-      ))}
-    </ul>
-  )
-}
-
 function PorCriterio({ porCriterio }) {
   if (!porCriterio || porCriterio.every((c) => c.evaluaciones === 0)) {
     return <p className="text-sm text-gray-500">Todavía no hay evaluaciones registradas.</p>

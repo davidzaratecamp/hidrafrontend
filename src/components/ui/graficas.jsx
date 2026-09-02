@@ -243,6 +243,64 @@ const DONA_CIRCUNFERENCIA = 2 * Math.PI * DONA_RADIO
 // demás gráficas, adaptado a un arco en vez de a un rectángulo.
 const DONA_SEPARADOR = 4
 
+/**
+ * Candidatos registrados por analista de Reclutamiento.
+ *
+ * Compartida por el dashboard de Selección (de ahí sale la cola que evalúan)
+ * y el de Administrador (panorama global) — antes vivía solo en
+ * `DashboardSeleccion.jsx`, se movió aquí en cuanto un segundo panel la
+ * necesitó igual. Nominal: el orden es solo para lectura (de mayor a menor),
+ * no un dato en sí, así que un solo tono plano — nunca la rampa ordinal del
+ * embudo de conversión.
+ */
+const COLOR_ANALISTA = '#1d6091'
+const LIMITE_ANALISTAS = 8
+
+function agruparAnalistas(equipo) {
+  const conCandidatos = equipo
+    .map((r) => ({ nombre: r.nombreCompleto, total: r.creados.total }))
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total)
+
+  if (conCandidatos.length <= LIMITE_ANALISTAS + 1) return conCandidatos
+
+  const principales = conCandidatos.slice(0, LIMITE_ANALISTAS)
+  const resto = conCandidatos.slice(LIMITE_ANALISTAS)
+  return [
+    ...principales,
+    { nombre: `${resto.length} analistas más`, total: resto.reduce((suma, r) => suma + r.total, 0) },
+  ]
+}
+
+export function CandidatosPorAnalista({ equipo }) {
+  const filas = agruparAnalistas(equipo ?? [])
+
+  if (filas.length === 0) {
+    return <p className="text-sm text-gray-500">Todavía no hay candidatos registrados.</p>
+  }
+
+  const maximo = Math.max(...filas.map((f) => f.total))
+
+  return (
+    <ul className="space-y-3">
+      {filas.map((f) => (
+        <BarraMedida
+          key={f.nombre}
+          etiqueta={f.nombre}
+          valor={f.total}
+          maximo={maximo}
+          color={COLOR_ANALISTA}
+          tooltip={
+            <>
+              <span className="font-semibold">{f.total}</span> candidatos registrados
+            </>
+          }
+        />
+      ))}
+    </ul>
+  )
+}
+
 export function ResultadosAgentes({ resultados, etiquetaCentro = 'decididos' }) {
   const filas = RESULTADOS_ETAPAS
     .map((etapa) => ({ ...etapa, valor: resultados?.[etapa.clave] ?? 0 }))

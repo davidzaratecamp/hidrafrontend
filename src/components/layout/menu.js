@@ -35,6 +35,18 @@ export const SECCIONES = [
     titulo: 'Mi gestión',
     items: [
       {
+        path: '/dashboard',
+        icon: LayoutDashboard,
+        label: 'Dashboard',
+        // Primero en el menú (y primer item visible del array, así que
+        // también el destino de `RoleRedirect` tras iniciar sesión) para
+        // quien lo tiene: es la pantalla de inicio del administrador
+        // (decisión de negocio, 2026-09-02). `ver_usuarios` es hoy exclusivo
+        // de Administrador — mismo patrón que "Agenda de entrevistas" y
+        // "Trazabilidad del equipo" más abajo, no hay permiso propio.
+        permiso: 'ver_usuarios',
+      },
+      {
         path: '/seleccion/dashboard',
         icon: LayoutDashboard,
         label: 'Dashboard de Selección',
@@ -42,7 +54,12 @@ export const SECCIONES = [
         // 2026-09-01): es lo primero que Selección necesita ver al entrar,
         // no algo enterrado bajo "Mi gestión" (que para ellos, aparte de
         // esto, solo trae Candidatos y Base histórica).
-        permiso: 'evaluar_candidatos',
+        //
+        // `ver_dashboard_seleccion` (migración 013, 2026-09-02): antes era
+        // `evaluar_candidatos`, que Administrador también tiene — con eso
+        // Administrador heredaba este panel como si fuera su pantalla de
+        // inicio, que ya no es el caso (tiene la suya, arriba).
+        permiso: 'ver_dashboard_seleccion',
       },
       {
         path: '/trazabilidad',
