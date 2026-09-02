@@ -355,10 +355,12 @@ export function ModalCitarCandidato({ candidato, onCerrar, onListo }) {
 
 /**
  * Decisión final: aprobar o rechazar al candidato, con razón obligatoria al
- * rechazar. Compartido entre "Clínica Agentes" (evaluados/rechazados) y el
- * listado general de Candidatos/Candidatos Staff, donde un candidato de cargo
- * distinto a Agente llega a "entrevistado" y pasa directo acá, sin evaluación
- * (ver seleccion.service.js::decidir).
+ * rechazar. Compartido entre "Clínica Agentes" (evaluados/rechazados, cargo
+ * Agente) y "Candidatos Staff" (cargo distinto a Agente, que llega directo a
+ * "entrevistado" y pasa directo acá, sin evaluación — ver
+ * seleccion.service.js::decidir). No vive en el listado general de
+ * "Candidatos" (decisión de negocio, 2026-09-02): esos dos son los lugares
+ * dedicados para decidir, "Candidatos" no es un tercero.
  */
 export function ModalDecision({ candidato, onCerrar, onListo }) {
   const [aprobacion, setAprobacion] = useState(null)
