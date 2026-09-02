@@ -56,7 +56,15 @@ export default function BaseHistorica() {
     { clave: 'email', titulo: 'Correo', render: (c) => texto(c.email) },
     { clave: 'contactoLlamada', titulo: 'Contacto llamada', render: (c) => si(c.contactoLlamada) },
     { clave: 'contactoWhatsapp', titulo: 'Contacto WhatsApp', render: (c) => si(c.contactoWhatsapp) },
-    { clave: 'perfil', titulo: 'Perfil', render: (c) => texto(c.perfil) },
+    {
+      clave: 'perfil',
+      titulo: 'Perfil',
+      // Texto libre y a veces largo: se limita la altura de la celda con
+      // scroll propio para que una fila no estire toda la tabla.
+      render: (c) => (
+        <div className="max-h-20 w-56 overflow-y-auto whitespace-normal">{texto(c.perfil)}</div>
+      ),
+    },
     // Bug ya documentado del sistema viejo: el archivo histórico no tiene
     // forma confiable de saber si citó de verdad, así que sale fijo (ver
     // `historico.excel.js`) — la vista en pantalla no debe inventar algo
