@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ClipboardCheck, Download, Eye, Mail, Phone, UserCheck, UserPlus, Users } from 'lucide-react'
+import { ClipboardCheck, Download, Eye, Mail, Phone, PhoneCall, UserCheck, UserPlus, Users } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, BotonEnlace, Error, Etiqueta, Progreso } from '../ui'
 import { esCargoAgente, fecha, nombreDe } from '../ui/formato'
@@ -10,7 +10,7 @@ import { useCatalogos } from '../../hooks/useCatalogos'
 import { useRecurso, useRecursoPaginado } from '../../hooks/useRecurso'
 import { useBusquedaDiferida } from '../../hooks/useBusquedaDiferida'
 import api from '../../services/api'
-import { ModalAsistencia } from '../seleccion/modales'
+import { ModalAsistencia, ModalSeguimiento } from '../seleccion/modales'
 import ModalEvaluacion from '../seleccion/ModalEvaluacion'
 import ModalDescargarExcel from '../seleccion/ModalDescargarExcel'
 
@@ -160,6 +160,19 @@ export default function ListaCandidatos() {
               <UserCheck className="h-4 w-4" /> Asistencia
             </Boton>
           )}
+          {/* Seguimiento antes de la entrevista: si respondió la llamada y/o
+              el WhatsApp/Global de confirmación. Mismo criterio que
+              "Asistencia" — solo tiene sentido mientras la citación sigue
+              pendiente. */}
+          {c.estado === 'citado' && hasPermission('registrar_asistencia') && (
+            <Boton
+              variante="secundario"
+              className="!py-1.5 whitespace-nowrap"
+              onClick={() => setModal({ tipo: 'seguimiento', candidato: c })}
+            >
+              <PhoneCall className="h-4 w-4" /> Seguimiento
+            </Boton>
+          )}
           {/* Reenviar el link del formulario: disponible para cualquier
               candidato (Agente o no) y en cualquier etapa del embudo, igual
               que el botón del perfil. Reenviar no pierde lo que el candidato
@@ -290,6 +303,21 @@ export default function ListaCandidatos() {
 
       {modal?.tipo === 'asistencia' && (
         <ModalAsistencia
+          candidato={{
+            candidato_id: modal.candidato.id,
+            primer_nombre: modal.candidato.primer_nombre,
+            primer_apellido: modal.candidato.primer_apellido,
+          }}
+          onCerrar={() => setModal(null)}
+          onListo={() => {
+            setModal(null)
+            recargar()
+          }}
+        />
+      )}
+
+      {modal?.tipo === 'seguimiento' && (
+        <ModalSeguimiento
           candidato={{
             candidato_id: modal.candidato.id,
             primer_nombre: modal.candidato.primer_nombre,

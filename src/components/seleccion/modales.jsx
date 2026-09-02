@@ -131,6 +131,113 @@ export function ModalCitar({ onCerrar, onListo }) {
   )
 }
 
+/**
+ * Seguimiento de asistencia mientras la citación sigue pendiente: si el
+ * candidato respondió la llamada y/o el mensaje de WhatsApp/Global de
+ * confirmación previos a la entrevista.
+ *
+ * Los dos canales son independientes: se puede guardar el resultado de uno
+ * solo (el backend deja el otro intacto, ver seleccion.repository.js). Al
+ * abrir el modal se trae el estado ya guardado, para no perder lo que se
+ * registró en un intento anterior.
+ */
+export function ModalSeguimiento({ candidato, onCerrar, onListo }) {
+  const [llamada, setLlamada] = useState(null)
+  const [whatsapp, setWhatsapp] = useState(null)
+  const [cargandoInicial, setCargandoInicial] = useState(true)
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  useEffect(() => {
+    let vigente = true
+    api
+      .get(`/seleccion/candidatos/${candidato.candidato_id}/seguimiento`)
+      .then((actual) => {
+        if (!vigente || !actual) return
+        setLlamada(actual.llamada)
+        setWhatsapp(actual.whatsapp)
+      })
+      .catch(() => {})
+      .finally(() => vigente && setCargandoInicial(false))
+    return () => {
+      vigente = false
+    }
+  }, [candidato.candidato_id])
+
+  async function guardar() {
+    setGuardando(true)
+    setError(null)
+    try {
+      await api.post(`/seleccion/candidatos/${candidato.candidato_id}/seguimiento`, {
+        llamada: llamada ?? undefined,
+        whatsapp: whatsapp ?? undefined,
+      })
+      onListo()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const CANALES = [
+    { clave: 'llamada', etiqueta: 'Llamada', valor: llamada, asignar: setLlamada },
+    { clave: 'whatsapp', etiqueta: 'Global/WA', valor: whatsapp, asignar: setWhatsapp },
+  ]
+
+  return (
+    <Modal
+      titulo="Seguimiento de asistencia"
+      descripcion={`${candidato.primer_nombre} ${candidato.primer_apellido}`}
+      onCerrar={onCerrar}
+    >
+      <div className="space-y-5">
+        <p className="text-sm text-gray-500">
+          ¿El candidato respondió al contacto de seguimiento antes de la entrevista?
+        </p>
+
+        {CANALES.map(({ clave, etiqueta, valor, asignar }) => (
+          <div key={clave}>
+            <p className="mb-2 text-sm font-medium text-gray-700">{etiqueta}</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { v: true, t: 'Sí', clase: 'border-emerald-500 bg-emerald-50 text-emerald-700' },
+                { v: false, t: 'No', clase: 'border-red-500 bg-red-50 text-red-700' },
+              ].map(({ v, t, clase }) => (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={cargandoInicial}
+                  onClick={() => asignar(v)}
+                  className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+                    valor === v ? clase : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <Error mensaje={error} />
+        <div className="flex justify-end gap-2">
+          <Boton variante="secundario" onClick={onCerrar}>
+            Cancelar
+          </Boton>
+          <Boton
+            onClick={guardar}
+            cargando={guardando}
+            disabled={cargandoInicial || (llamada === null && whatsapp === null)}
+          >
+            Guardar
+          </Boton>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 /** Registra asistencia. Asistió → entrevistado; no asistió → motivo obligatorio. */
 export function ModalAsistencia({ candidato, onCerrar, onListo }) {
   const { catalogos } = useCatalogos()
