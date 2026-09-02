@@ -13,6 +13,7 @@ import PerfilCandidato from './components/candidatos/PerfilCandidato'
 import Agenda from './components/seleccion/Agenda'
 import Decisiones from './components/seleccion/Decisiones'
 import DashboardSeleccion from './components/seleccion/DashboardSeleccion'
+import DashboardAdministrador from './components/administracion/DashboardAdministrador'
 import GestionUsuarios from './components/usuarios/GestionUsuarios'
 import RolesPermisos from './components/usuarios/RolesPermisos'
 import Desprendibles from './components/desprendibles/Desprendibles'
@@ -52,6 +53,12 @@ function Protegida({ permission, permissions, children }) {
 
 /** Ruta → permiso → pantalla. Un solo lugar donde mirar quién entra a qué. */
 const PANTALLAS = [
+  // `ver_usuarios`: hoy exclusivo de Administrador, mismo patrón que
+  // "Agenda de entrevistas"/"Trazabilidad del equipo" más abajo — no hay un
+  // permiso propio "ver_dashboard_administrador", se reutiliza el que ya
+  // solo tiene ese rol.
+  { path: '/dashboard', permission: 'ver_usuarios', Componente: DashboardAdministrador },
+
   { path: '/trazabilidad', permission: 'ver_dashboard', Componente: MiTrazabilidad },
   { path: '/trazabilidad/equipo', permission: 'ver_perfiles_completos', Componente: TrazabilidadEquipo },
   {
@@ -65,7 +72,11 @@ const PANTALLAS = [
   { path: '/candidatos/:candidatoId', permission: 'ver_candidatos', Componente: PerfilCandidato },
   { path: '/historico', permission: 'ver_candidatos', Componente: BaseHistorica },
 
-  { path: '/seleccion/dashboard', permission: 'evaluar_candidatos', Componente: DashboardSeleccion },
+  // `ver_dashboard_seleccion`: exclusivo de Selección (migración 013) — antes
+  // era `evaluar_candidatos`, que Administrador también tiene, así que
+  // Administrador terminaba viendo este panel sin que fuera su pantalla de
+  // inicio (decisión de negocio, 2026-09-02: se le da la suya, arriba).
+  { path: '/seleccion/dashboard', permission: 'ver_dashboard_seleccion', Componente: DashboardSeleccion },
   {
     path: '/seleccion/agenda',
     permissions: ['agendar_entrevistas', 'registrar_asistencia', 'evaluar_candidatos'],
