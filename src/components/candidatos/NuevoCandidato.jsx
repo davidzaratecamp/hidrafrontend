@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UserPlus } from 'lucide-react'
+import { AlertTriangle, UserPlus } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, Cargando, Error } from '../ui'
 import { CampoFijo, Seccion, Seleccion, SiNo, Texto } from '../ui/campos'
@@ -8,6 +8,7 @@ import { cargosDe, useCatalogos } from '../../hooks/useCatalogos'
 import { useAuth } from '../../context/useAuth'
 import { fecha as formatearFecha } from '../ui/formato'
 import api from '../../services/api'
+import ModalPerfilHistorico from '../historico/ModalPerfilHistorico'
 
 /**
  * Registro de un candidato.
@@ -52,8 +53,45 @@ export default function NuevoCandidato() {
   const [error, setError] = useState(null)
   const [errores, setErrores] = useState({})
 
+  // Alerta de duplicado contra la base histórica: se busca por número de
+  // documento exacto (no por nombre, que puede coincidir por casualidad).
+  const [coincidenciaHistorica, setCoincidenciaHistorica] = useState(null)
+  const [verPerfilHistorico, setVerPerfilHistorico] = useState(false)
+
   const set = (cambios) => setDatos((d) => ({ ...d, ...cambios }))
   const errorDe = (campo) => errores[`body.${campo}`]
+
+  /**
+   * Busca en la base histórica mientras el usuario escribe el documento, con
+   * espera para no disparar una consulta por cada tecla. Falla en silencio —
+   * si el módulo histórico no está configurado en este entorno, o la
+   * petición falla por lo que sea, el registro sigue funcionando igual: esto
+   * es una ayuda, no un requisito para poder guardar.
+   */
+  useEffect(() => {
+    const documento = (datos.numeroDocumento ?? '').trim()
+    if (documento.length < 5) {
+      setCoincidenciaHistorica(null)
+      return undefined
+    }
+
+    let vigente = true
+    const temporizador = setTimeout(async () => {
+      try {
+        const resultados = await api.get(
+          `/historico/candidatos${api.qs({ numeroDocumento: documento, porPagina: 1 })}`
+        )
+        if (vigente) setCoincidenciaHistorica(resultados?.[0] ?? null)
+      } catch {
+        if (vigente) setCoincidenciaHistorica(null)
+      }
+    }, 400)
+
+    return () => {
+      vigente = false
+      clearTimeout(temporizador)
+    }
+  }, [datos.numeroDocumento])
 
   /** Cambiar de cliente invalida el cargo: puede no estar habilitado en el nuevo. */
   const cambiarCliente = (cliente) => set({ cliente, cargo: '' })
@@ -170,6 +208,32 @@ export default function NuevoCandidato() {
             />
           </Seccion>
 
+          {/* Alerta de duplicado: este documento ya aparece en el archivo del
+              sistema anterior. No bloquea el registro — solo avisa, con la
+              opción de revisar qué pasó la vez anterior antes de continuar. */}
+          {coincidenciaHistorica && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900">
+                  Este documento ya aparece en la base histórica
+                </p>
+                <p className="mt-0.5 text-sm text-amber-800">
+                  {coincidenciaHistorica.nombreCompleto} · {coincidenciaHistorica.cliente ?? 'sin campaña'} ·{' '}
+                  {coincidenciaHistorica.estado ?? 'sin estado'}
+                </p>
+              </div>
+              <Boton
+                type="button"
+                variante="secundario"
+                className="!py-1.5 whitespace-nowrap"
+                onClick={() => setVerPerfilHistorico(true)}
+              >
+                Ver perfil
+              </Boton>
+            </div>
+          )}
+
           {/* CONTACTO → LLAMADA · WHATSAPP. Con 3 columnas los tres caben en
               una sola fila, sin necesitar un relleno para alinear. */}
           <Seccion titulo="Contacto" columnas={3}>
@@ -247,6 +311,13 @@ export default function NuevoCandidato() {
           </Boton>
         </div>
       </form>
+
+      {verPerfilHistorico && coincidenciaHistorica && (
+        <ModalPerfilHistorico
+          candidatoId={coincidenciaHistorica.id}
+          onCerrar={() => setVerPerfilHistorico(false)}
+        />
+      )}
     </Layout>
   )
 }
