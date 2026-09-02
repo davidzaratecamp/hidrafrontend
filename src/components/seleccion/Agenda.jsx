@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, CalendarPlus, ClipboardCheck, Download, UserCheck } from 'lucide-react'
+import { CalendarClock, CalendarPlus, ClipboardCheck, Download, PhoneCall, UserCheck } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, Error, Etiqueta } from '../ui'
 import { esCargoAgente, fecha } from '../ui/formato'
@@ -8,7 +8,7 @@ import { CeldaDoble, Filtros, Tabla } from '../ui/Tabla'
 import { useAuth } from '../../context/useAuth'
 import { useRecursoPaginado } from '../../hooks/useRecurso'
 import api from '../../services/api'
-import { ModalAsistencia, ModalCitar } from './modales'
+import { ModalAsistencia, ModalCitar, ModalSeguimiento } from './modales'
 import ModalDescargarExcel from './ModalDescargarExcel'
 import PuntajeEvaluacion from './PuntajeEvaluacion'
 import ModalEvaluacion from './ModalEvaluacion'
@@ -113,6 +113,17 @@ export default function Agenda() {
               <UserCheck className="h-4 w-4" /> Asistencia
             </Boton>
           )}
+          {/* Seguimiento antes de la entrevista: si respondió la llamada y/o
+              el WhatsApp/Global de confirmación, mientras sigue pendiente. */}
+          {c.asistio === 'pendiente' && hasPermission('registrar_asistencia') && (
+            <Boton
+              variante="secundario"
+              className="!py-1.5"
+              onClick={() => setModal({ tipo: 'seguimiento', candidato: c })}
+            >
+              <PhoneCall className="h-4 w-4" /> Seguimiento
+            </Boton>
+          )}
           {/* Evaluar solo tiene sentido tras la entrevista, y solo para cargo
               Agente (decisión de negocio, 2026-08-31): el resto pasa directo
               a Decisión Final, sin la calificación de 5 criterios. El backend
@@ -207,6 +218,13 @@ export default function Agenda() {
       )}
       {modal?.tipo === 'asistencia' && (
         <ModalAsistencia
+          candidato={modal.candidato}
+          onCerrar={() => setModal(null)}
+          onListo={cerrarYRecargar}
+        />
+      )}
+      {modal?.tipo === 'seguimiento' && (
+        <ModalSeguimiento
           candidato={modal.candidato}
           onCerrar={() => setModal(null)}
           onListo={cerrarYRecargar}
