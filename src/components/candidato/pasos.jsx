@@ -68,6 +68,7 @@ export const datosBasicos = {
       <Seccion>
         <Texto
           etiqueta="Nombres completos"
+          requerido
           maxLength={64}
           value={datos.nombreCompleto ?? ''}
           onChange={(e) => set({ nombreCompleto: e.target.value })}
@@ -76,6 +77,7 @@ export const datosBasicos = {
         <CampoFijo etiqueta="Correo electrónico" valor={candidato?.email || '—'} />
         <Texto
           etiqueta="N° de documento"
+          requerido
           inputMode="numeric"
           maxLength={20}
           value={datos.numeroDocumento ?? ''}
@@ -83,6 +85,7 @@ export const datosBasicos = {
         />
         <Seleccion
           etiqueta="EPS"
+          requerido
           opciones={catalogos.eps}
           value={datos.eps ?? ''}
           onChange={(e) => set({ eps: e.target.value })}
@@ -90,12 +93,14 @@ export const datosBasicos = {
         <CampoFijo etiqueta="Nacionalidad" valor={candidato?.nacionalidad || '—'} />
         <Seleccion
           etiqueta="Fondo de pensión"
+          requerido
           opciones={catalogos.afp}
           value={datos.afp ?? ''}
           onChange={(e) => set({ afp: e.target.value })}
         />
         <Texto
           etiqueta="Edad"
+          requerido
           type="number"
           min="14"
           max="99"
@@ -104,30 +109,35 @@ export const datosBasicos = {
         />
         <Texto
           etiqueta="Dirección residencial"
+          requerido
           maxLength={53}
           value={datos.direccionResidencial ?? ''}
           onChange={(e) => set({ direccionResidencial: e.target.value })}
         />
         <Texto
           etiqueta="Barrio"
+          requerido
           maxLength={21}
           value={datos.barrio ?? ''}
           onChange={(e) => set({ barrio: e.target.value })}
         />
         <Seleccion
           etiqueta="Estado civil"
+          requerido
           opciones={catalogos.estados_civiles}
           value={datos.estadoCivil ?? ''}
           onChange={(e) => set({ estadoCivil: e.target.value })}
         />
         <Seleccion
           etiqueta="Talla de camisa"
+          requerido
           opciones={catalogos.tallas_camisa}
           value={datos.tallaCamisa ?? ''}
           onChange={(e) => set({ tallaCamisa: e.target.value })}
         />
         <Texto
           etiqueta="Celular"
+          requerido
           inputMode="tel"
           maxLength={18}
           value={datos.celular ?? ''}
@@ -135,6 +145,7 @@ export const datosBasicos = {
         />
         <Seleccion
           etiqueta="RH"
+          requerido
           opciones={catalogos.grupos_sanguineos}
           value={datos.grupoSanguineo ?? ''}
           onChange={(e) => set({ grupoSanguineo: e.target.value })}
@@ -145,18 +156,21 @@ export const datosBasicos = {
       <Seccion titulo="Contacto de emergencia">
         <Seleccion
           etiqueta="Parentesco"
+          requerido
           opciones={catalogos.parentescos}
           value={datos.parentescoEmergencia ?? ''}
           onChange={(e) => set({ parentescoEmergencia: e.target.value })}
         />
         <Texto
           etiqueta="Nombre completo"
+          requerido
           maxLength={50}
           value={datos.nombreEmergencia ?? ''}
           onChange={(e) => set({ nombreEmergencia: e.target.value })}
         />
         <Texto
           etiqueta="Teléfono"
+          requerido
           inputMode="tel"
           maxLength={25}
           value={datos.numeroEmergencia ?? ''}
@@ -188,72 +202,108 @@ export const estudios = {
   Formulario: ({ datos, set, catalogos }) => {
     const niveles = catalogos.niveles_estudios ?? []
     const valores = datos.estudios ?? {}
+    const bachillerato = niveles.find((n) => n.codigo === 'bachillerato')
+    const nivelInformatico = niveles.find((n) => n.codigo === NIVEL_INFORMATICO)
+    // El candidato elige UNO de los dos niveles superiores, no los dos en
+    // secuencia (decisión de negocio, 2026-09-03) — antes se revelaban los 4
+    // niveles del catálogo uno tras otro, sin importar que "Técnico" y
+    // "Profesional" casi nunca aplican los dos a la vez para la misma persona.
+    const opcionesNivelSuperior = niveles.filter((n) =>
+      ['tecnico_tecnologo', 'profesional_u_otros'].includes(n.codigo)
+    )
 
     const actualizar = (nivel, campo, valor) =>
       set({ estudios: { ...valores, [nivel]: { ...(valores[nivel] ?? {}), [campo]: valor } } })
 
-    // Bachillerato (primer nivel) siempre visible; cada nivel siguiente solo
-    // aparece una vez el anterior está lleno. Reactivo: si el candidato borra un
-    // nivel ya lleno, el siguiente vuelve a ocultarse (sin perder sus datos).
-    const nivelesVisibles = niveles.filter(
-      (nivel, i) => i === 0 || nivelLleno(niveles[i - 1].codigo, valores)
-    )
+    const bachilleratoLleno = nivelLleno('bachillerato', valores)
+
+    // `nivelSuperior` es una elección de interfaz, no un dato que el backend
+    // guarde (guarda por nivel, no la elección en sí — ver `aCuerpo`). Si el
+    // candidato ya tenía datos de un nivel superior de un envío anterior
+    // (reabrió el link), el selector arranca ahí: sin esto, reabrir el
+    // formulario escondería datos ya guardados detrás de un selector vacío.
+    const nivelSuperior =
+      datos.nivelSuperior ??
+      (nivelLleno('profesional_u_otros', valores)
+        ? 'profesional_u_otros'
+        : nivelLleno('tecnico_tecnologo', valores)
+          ? 'tecnico_tecnologo'
+          : '')
+    const nivelElegido = niveles.find((n) => n.codigo === nivelSuperior)
+
+    const campoNivel = (nivel) => {
+      const fila = valores[nivel.codigo] ?? {}
+      return (
+        <fieldset key={nivel.codigo} className="rounded-xl border border-gray-200 p-4 space-y-4">
+          <legend className="px-1 text-sm font-semibold text-gray-900">
+            {nivel.nombre}
+            {nivel.codigo === 'bachillerato' && <span className="text-red-500 ml-0.5">*</span>}
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Texto
+              etiqueta="Nombre institución"
+              maxLength={40}
+              value={fila.nombreInstitucion ?? ''}
+              onChange={(e) => actualizar(nivel.codigo, 'nombreInstitucion', e.target.value)}
+            />
+            <Texto
+              etiqueta="Título obtenido"
+              maxLength={43}
+              value={fila.tituloObtenido ?? ''}
+              onChange={(e) => actualizar(nivel.codigo, 'tituloObtenido', e.target.value)}
+            />
+            <Texto
+              etiqueta="Año de finalización"
+              type="number"
+              min="1950"
+              max="2100"
+              value={fila.anoFinalizacion ?? ''}
+              onChange={(e) => actualizar(nivel.codigo, 'anoFinalizacion', e.target.value)}
+            />
+          </div>
+        </fieldset>
+      )
+    }
 
     return (
       <div className="space-y-5">
-        {nivelesVisibles.map((nivel) => {
-          const esInformatico = nivel.codigo === NIVEL_INFORMATICO
-          const fila = valores[nivel.codigo] ?? {}
-          const obligatorio = nivel.codigo === 'bachillerato'
+        {bachillerato && campoNivel(bachillerato)}
 
-          return (
-            <fieldset
-              key={nivel.codigo}
-              className="rounded-xl border border-gray-200 p-4 space-y-4"
-            >
-              <legend className="px-1 text-sm font-semibold text-gray-900">
-                {nivel.nombre}
-                {obligatorio && <span className="text-red-500 ml-0.5">*</span>}
-              </legend>
+        {/* El selector (y todo lo que sigue) solo aparece una vez lleno el
+            bachillerato — mismo revelado progresivo que ya tenía el paso,
+            ahora con una elección en vez de los 4 niveles en fila. */}
+        {bachilleratoLleno && (
+          <>
+            <Seleccion
+              etiqueta="¿Cuál es tu siguiente nivel de estudios?"
+              opciones={opcionesNivelSuperior}
+              value={nivelSuperior}
+              onChange={(e) => set({ nivelSuperior: e.target.value })}
+              vacio="No aplica"
+              ayuda="Opcional: solo si ya tienes un nivel más allá del bachillerato."
+            />
 
-              {esInformatico ? (
+            {nivelElegido && campoNivel(nivelElegido)}
+
+            {nivelInformatico && (
+              <fieldset className="rounded-xl border border-gray-200 p-4 space-y-4">
+                <legend className="px-1 text-sm font-semibold text-gray-900">
+                  {nivelInformatico.nombre}
+                </legend>
                 <AreaTexto
                   etiqueta="¿Qué herramientas manejas?"
                   filas={2}
                   maxLength={112}
                   placeholder="Ej. Excel avanzado, CRM Salesforce"
-                  value={fila.descripcion ?? ''}
-                  onChange={(e) => actualizar(nivel.codigo, 'descripcion', e.target.value)}
+                  value={(valores[nivelInformatico.codigo] ?? {}).descripcion ?? ''}
+                  onChange={(e) =>
+                    actualizar(nivelInformatico.codigo, 'descripcion', e.target.value)
+                  }
                 />
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Texto
-                    etiqueta="Nombre institución"
-                    maxLength={40}
-                    value={fila.nombreInstitucion ?? ''}
-                    onChange={(e) =>
-                      actualizar(nivel.codigo, 'nombreInstitucion', e.target.value)
-                    }
-                  />
-                  <Texto
-                    etiqueta="Título obtenido"
-                    maxLength={43}
-                    value={fila.tituloObtenido ?? ''}
-                    onChange={(e) => actualizar(nivel.codigo, 'tituloObtenido', e.target.value)}
-                  />
-                  <Texto
-                    etiqueta="Año de finalización"
-                    type="number"
-                    min="1950"
-                    max="2100"
-                    value={fila.anoFinalizacion ?? ''}
-                    onChange={(e) => actualizar(nivel.codigo, 'anoFinalizacion', e.target.value)}
-                  />
-                </div>
-              )}
-            </fieldset>
-          )
-        })}
+              </fieldset>
+            )}
+          </>
+        )}
       </div>
     )
   },
@@ -369,9 +419,14 @@ export const experiencia = {
 
             {/* Bloque de la plantilla, en su mismo orden. El bloque "Anterior
                 empleo" reutiliza el mismo formulario, aunque en la plantilla
-                impresa solo se lea nombre, funciones, cargo y salario. */}
+                impresa solo se lea nombre, funciones, cargo y salario.
+                Empresa/cargo/fecha de inicio son los 3 campos que definen
+                "lleno" (`empleoLleno`); obligatorios solo en el primer
+                bloque — el segundo sigue opcional (decisión de negocio,
+                2026-09-03). */}
             <Texto
               etiqueta="Nombre de la empresa"
+              requerido={!opcional}
               maxLength={41}
               value={exp.nombreEmpresa ?? ''}
               onChange={(e) => actualizar(i, 'nombreEmpresa', e.target.value)}
@@ -388,12 +443,14 @@ export const experiencia = {
             <div className="grid gap-4 sm:grid-cols-2">
               <Texto
                 etiqueta="Fecha de inicio"
+                requerido={!opcional}
                 type="date"
                 value={exp.fechaInicio ?? ''}
                 onChange={(e) => actualizar(i, 'fechaInicio', e.target.value)}
               />
               <Texto
                 etiqueta="Cargo desempeñado"
+                requerido={!opcional}
                 maxLength={19}
                 value={exp.cargoDesempenado ?? ''}
                 onChange={(e) => actualizar(i, 'cargoDesempenado', e.target.value)}
@@ -534,6 +591,7 @@ export const personal = {
         <Seccion columnas={1}>
           <AreaTexto
             etiqueta="Tu núcleo familiar"
+            requerido
             filas={2}
             maxLength={1457}
             placeholder="¿Con quién vives?"
@@ -542,6 +600,7 @@ export const personal = {
           />
           <AreaTexto
             etiqueta="Tus fortalezas"
+            requerido
             filas={2}
             maxLength={712}
             value={datos.fortalezas ?? ''}
@@ -549,6 +608,7 @@ export const personal = {
           />
           <AreaTexto
             etiqueta="Aspectos por mejorar"
+            requerido
             filas={2}
             maxLength={394}
             value={datos.aspectosMejorar ?? ''}
@@ -556,6 +616,7 @@ export const personal = {
           />
           <AreaTexto
             etiqueta="Competencias laborales"
+            requerido
             filas={2}
             maxLength={632}
             value={datos.competenciasLaborales ?? ''}
@@ -572,6 +633,7 @@ export const personal = {
             <Texto
               key={plazo}
               etiqueta={etiqueta}
+              requerido
               maxLength={limite}
               value={metas[plazo] ?? ''}
               onChange={(e) => set({ metas: { ...metas, [plazo]: e.target.value } })}
@@ -579,7 +641,15 @@ export const personal = {
           ))}
         </Seccion>
 
-        <Seccion titulo="Conocimientos informáticos" descripcion="1 es básico, 5 es experto." columnas={1}>
+        {/* Sin asterisco por herramienta: el backend exige al menos una
+            calificada, no todas —un catálogo que puede crecer no debería
+            volverse una lista entera de campos obligatorios (decisión de
+            negocio, 2026-09-03). La obligatoriedad se explica en el texto. */}
+        <Seccion
+          titulo="Conocimientos informáticos"
+          descripcion="1 es básico, 5 es experto. Califica al menos una herramienta."
+          columnas={1}
+        >
           {(catalogos.herramientas_informaticas ?? []).map((h) => (
             <Escala
               key={h.codigo}
@@ -593,11 +663,13 @@ export const personal = {
         <Seccion titulo="Salud" columnas={1}>
           <Texto
             etiqueta="¿Cómo está tu salud actualmente?"
+            requerido
             value={datos.estadoSaludActual ?? ''}
             onChange={(e) => set({ estadoSaludActual: e.target.value })}
           />
           <Escala
             etiqueta="Califícate de 1 a 5 como candidato"
+            requerido
             valor={datos.autoevaluacion}
             onChange={(v) => set({ autoevaluacion: v })}
           />
@@ -611,16 +683,19 @@ export const personal = {
         <Seccion columnas={1}>
           <SiNo
             etiqueta="¿Tu experiencia comercial es certificada, mínimo de 3 meses?"
+            requerido
             valor={datos.experienciaComercialCertificada}
             onChange={(v) => set({ experienciaComercialCertificada: v })}
           />
           <SiNo
             etiqueta="¿Tienes experiencia comercial pero no está certificada?"
+            requerido
             valor={datos.experienciaComercialNoCertificada}
             onChange={(v) => set({ experienciaComercialNoCertificada: v })}
           />
           <SiNo
             etiqueta="¿Es este tu primer empleo?"
+            requerido
             valor={datos.primerEmpleoFormal}
             onChange={(v) => set({ primerEmpleoFormal: v })}
           />
@@ -652,7 +727,7 @@ export const consentimiento = {
   clave: 'consentimiento',
   titulo: 'Autorización de tratamiento de datos',
   descripcion: 'Último paso. Al aceptar se generan tus documentos para firma electrónica.',
-  Formulario: ({ datos, set, catalogos }) => (
+  Formulario: ({ datos, set }) => (
     <div className="space-y-5">
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 leading-relaxed max-h-56 overflow-y-auto">
         <p>
@@ -668,10 +743,14 @@ export const consentimiento = {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Seleccion
+        {/* Texto libre, no el catálogo de solo 2 ciudades (Bogotá/Barranquilla,
+            ver migración 017): un candidato de cualquier otra ciudad no tenía
+            cómo diligenciarlo (decisión de negocio, 2026-09-03). */}
+        <Texto
           etiqueta="Ciudad"
           requerido
-          opciones={catalogos.ciudades}
+          maxLength={120}
+          placeholder="Ej. Bogotá"
           value={datos.ciudad ?? ''}
           onChange={(e) => set({ ciudad: e.target.value })}
         />
