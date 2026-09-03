@@ -129,9 +129,9 @@ export function SiNo({ etiqueta, valor, onChange, requerido, error, ayuda }) {
 }
 
 /** Escala 1–5, la que usa el formato oficial para conocimientos y autoevaluación. */
-export function Escala({ etiqueta, valor, onChange, error }) {
+export function Escala({ etiqueta, valor, onChange, requerido, error }) {
   return (
-    <Campo etiqueta={etiqueta} error={error}>
+    <Campo etiqueta={etiqueta} requerido={requerido} error={error}>
       <div className="flex gap-1.5">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
