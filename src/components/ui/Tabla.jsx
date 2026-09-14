@@ -88,6 +88,19 @@ export function Tabla({
   )
 }
 
+/**
+ * Celda de texto libre (observaciones, motivos, razones…), potencialmente
+ * largo: scroll propio para que una fila no estire toda la tabla y, a la vez,
+ * se pueda ver el contenido completo sin depender del tooltip del `title`.
+ */
+export function CeldaTexto({ children, ancho = 'w-56', alto = 'max-h-20' }) {
+  return (
+    <div className={`${alto} ${ancho} overflow-y-auto overflow-x-hidden whitespace-normal break-words`}>
+      {children || '—'}
+    </div>
+  )
+}
+
 /** Fila de dos líneas: valor principal y una nota debajo. Patrón muy repetido. */
 export function CeldaDoble({ principal, secundario }) {
   return (

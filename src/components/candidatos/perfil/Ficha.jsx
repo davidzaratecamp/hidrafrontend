@@ -71,7 +71,6 @@ function Formulario({ candidatoId }) {
             etiqueta="Aspiración salarial"
             valor={f.aspiracion_salarial ? `$${Number(f.aspiracion_salarial).toLocaleString('es-CO')}` : null}
           />
-          <Dato etiqueta="Fecha de nacimiento" valor={fecha(f.fecha_nacimiento)} />
           <Dato etiqueta="Estado civil" valor={f.estado_civil} />
           <Dato etiqueta="Dirección residencial" valor={f.direccion_residencial} />
           <Dato etiqueta="Barrio" valor={f.barrio} />
