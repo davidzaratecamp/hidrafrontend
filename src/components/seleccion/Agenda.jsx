@@ -95,12 +95,13 @@ export default function Agenda() {
       render: (c) => <Etiqueta texto={TEXTO[c.asistio] ?? 'Pendiente'} tono={TONO[c.asistio]} />,
     },
     {
-      // Solo tiene sentido mientras la citación sigue pendiente: una vez
-      // resuelta la asistencia, el seguimiento previo deja de ser relevante.
+      // Sigue siendo relevante después de resuelta la asistencia (decisión de
+      // negocio, 2026-09-15): se puede completar o corregir el seguimiento
+      // en cualquier momento de la vida de la citación, no solo mientras
+      // sigue pendiente.
       clave: 'seguimiento',
       titulo: 'Seguimiento',
       render: (c) => {
-        if (c.asistio !== 'pendiente') return <span className="text-gray-300">—</span>
         const resultado = resultadoSeguimiento(c.seguimiento_llamada, c.seguimiento_whatsapp)
         return <Etiqueta texto={TEXTO_SEGUIMIENTO[resultado]} tono={TONO_SEGUIMIENTO[resultado]} />
       },
@@ -127,11 +128,12 @@ export default function Agenda() {
               <UserCheck className="h-4 w-4" /> Asistencia
             </Boton>
           )}
-          {/* Seguimiento antes de la entrevista: si respondió la llamada y/o
-              el WhatsApp/Global de confirmación, mientras sigue pendiente. El
+          {/* Seguimiento de contacto (llamada y/o WhatsApp/Global de
+              confirmación) previo a la entrevista. Sigue disponible después
+              de resuelta la asistencia (decisión de negocio, 2026-09-15). El
               botón se pinta verde/rojo según el resultado, para verlo sin
               abrir el modal. */}
-          {c.asistio === 'pendiente' && hasPermission('registrar_asistencia') && (
+          {hasPermission('registrar_asistencia') && (
             <Boton
               variante="secundario"
               className={`!py-1.5 ${claseBotonSeguimiento(
