@@ -250,11 +250,15 @@ export default function ListaCandidatos({ segmento }) {
               <UserCheck className="h-4 w-4" /> Asistencia
             </Boton>
           )}
-          {/* Seguimiento antes de la entrevista: si respondió la llamada y/o
-              el WhatsApp/Global de confirmación. Mismo criterio que
-              "Asistencia" — solo tiene sentido mientras la citación sigue
-              pendiente. El botón se pinta verde/rojo según el resultado. */}
-          {c.estado === 'citado' && hasPermission('registrar_asistencia') && (
+          {/* Seguimiento de contacto (llamada y/o WhatsApp/Global de
+              confirmación) previo a la entrevista. A diferencia de
+              "Asistencia", sigue disponible después de marcar la asistencia
+              (decisión de negocio, 2026-09-15): antes se ocultaba en cuanto
+              el candidato dejaba de estar "citado" y ya no se podía corregir
+              ni completar. Basta con que el candidato tenga (o haya tenido)
+              una citación — `citacion_id` viene de la ÚLTIMA, esté o no
+              resuelta. El botón se pinta verde/rojo según el resultado. */}
+          {c.citacion_id != null && hasPermission('registrar_asistencia') && (
             <Boton
               variante="secundario"
               className={`!py-1.5 whitespace-nowrap ${claseBotonSeguimiento(
