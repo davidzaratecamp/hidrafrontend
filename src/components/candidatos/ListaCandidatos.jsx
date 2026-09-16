@@ -16,6 +16,7 @@ import {
   UserCog,
   UserPlus,
   Users,
+  Upload,
 } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, BotonEnlace, Error, Etiqueta, Progreso } from '../ui'
@@ -39,6 +40,7 @@ import {
 } from '../seleccion/modales'
 import ModalEvaluacion from '../seleccion/ModalEvaluacion'
 import ModalDescargarExcel from '../seleccion/ModalDescargarExcel'
+import ImportarExcelModal from './ImportarExcelModal'
 
 /**
  * Listado de candidatos con pestañas por estado.
@@ -124,8 +126,8 @@ export default function ListaCandidatos({ segmento }) {
   )
 
   const { datos: resumen, recargar: recargarResumen } = useRecurso(
-    () => api.get('/candidatos/resumen-estados'),
-    [busqueda],
+    () => api.get(`/candidatos/resumen-estados${api.qs(filtroCargo)}`),
+    [busqueda, soloAgentes, segmento],
     { inicial: [] }
   )
 
@@ -419,6 +421,11 @@ export default function ListaCandidatos({ segmento }) {
             </Boton>
           )}
           {hasPermission('crear_candidatos') && (
+            <Boton variante="secundario" onClick={() => setModal({ tipo: 'importar-excel' })}>
+              <Upload className="h-4 w-4" /> Cargar Excel
+            </Boton>
+          )}
+          {hasPermission('crear_candidatos') && (
             <Boton onClick={() => navegar('/candidatos/nuevo')}>
               <UserPlus className="h-4 w-4" /> Nuevo candidato
             </Boton>
@@ -603,6 +610,17 @@ export default function ListaCandidatos({ segmento }) {
           titulo="Descargar candidatos"
           descripcion="Base nueva, sin filtrar por citación ni decisión. FECHA es la fecha de registro. Sin rango, trae los últimos 100 registrados."
           onCerrar={() => setModal(null)}
+        />
+      )}
+
+      {modal?.tipo === 'importar-excel' && (
+        <ImportarExcelModal
+          onCerrar={() => setModal(null)}
+          onImportado={(creados) => {
+            setModal(null)
+            setAviso({ tono: 'exito', texto: `${creados} candidato(s) registrado(s) desde el Excel.` })
+            recargarTodo()
+          }}
         />
       )}
     </Layout>

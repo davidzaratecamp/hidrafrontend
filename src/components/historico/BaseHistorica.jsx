@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Archive, Download, Search } from 'lucide-react'
 import Layout from '../layout/Layout'
 import { Boton, Error } from '../ui'
-import { Tabla } from '../ui/Tabla'
+import { CeldaTexto, Tabla } from '../ui/Tabla'
 import { fecha } from '../ui/formato'
 import { useAuth } from '../../context/useAuth'
 import { useRecursoPaginado } from '../../hooks/useRecurso'
@@ -60,10 +60,9 @@ export default function BaseHistorica() {
       clave: 'perfil',
       titulo: 'Perfil',
       // Texto libre y a veces largo: se limita la altura de la celda con
-      // scroll propio para que una fila no estire toda la tabla.
-      render: (c) => (
-        <div className="max-h-20 w-56 overflow-y-auto whitespace-normal">{texto(c.perfil)}</div>
-      ),
+      // scroll propio para que una fila no estire toda la tabla, sin perder
+      // nada de la información (se ve completa haciendo scroll adentro).
+      render: (c) => <CeldaTexto>{c.perfil}</CeldaTexto>,
     },
     // Bug ya documentado del sistema viejo: el archivo histórico no tiene
     // forma confiable de saber si citó de verdad, así que sale fijo (ver
@@ -72,7 +71,11 @@ export default function BaseHistorica() {
     { clave: 'citado', titulo: 'Citado', render: () => 'Sí' },
     { clave: 'estadoGestionReclutamiento', titulo: 'Estado gestión reclutamiento', render: (c) => texto(c.estadoGestionReclutamiento) },
     { clave: 'asisteEntrevista', titulo: 'Asiste entrevista', render: (c) => texto(c.asisteEntrevista) },
-    { clave: 'motivoInasistencia', titulo: 'Motivo inasistencia', render: (c) => texto(c.motivoInasistencia) },
+    {
+      clave: 'motivoInasistencia',
+      titulo: 'Motivo inasistencia',
+      render: (c) => <CeldaTexto>{c.motivoInasistencia}</CeldaTexto>,
+    },
     ...(hasPermission('ver_perfiles_completos')
       ? [
           { clave: 'antecedentesAdres', titulo: 'Antecedentes ADRES', render: (c) => texto(c.antecedentesAdres) },
@@ -80,7 +83,11 @@ export default function BaseHistorica() {
           { clave: 'antecedentesComp', titulo: 'Antecedentes Contraloría', render: (c) => texto(c.antecedentesComp) },
           { clave: 'antecedentesProcu', titulo: 'Antecedentes Procuraduría', render: (c) => texto(c.antecedentesProcu) },
           { clave: 'aprobado', titulo: 'Aprobado', render: (c) => si(c.aprobado) },
-          { clave: 'razonNoAprobado', titulo: '¿Por qué no aprobó?', render: (c) => texto(c.razonNoAprobado) },
+          {
+            clave: 'razonNoAprobado',
+            titulo: '¿Por qué no aprobó?',
+            render: (c) => <CeldaTexto>{c.razonNoAprobado}</CeldaTexto>,
+          },
         ]
       : []),
   ]

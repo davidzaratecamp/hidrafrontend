@@ -4,7 +4,7 @@ import { ClipboardCheck, Download, Gavel, GraduationCap, UserCheck } from 'lucid
 import Layout from '../layout/Layout'
 import { Boton, Error, Etiqueta, Modal } from '../ui'
 import { claseBotonSeguimiento, esCargoAgente, fecha, nombreDe } from '../ui/formato'
-import { CeldaDoble, Filtros, Tabla } from '../ui/Tabla'
+import { CeldaDoble, CeldaTexto, Filtros, Tabla } from '../ui/Tabla'
 import { AreaTexto } from '../ui/campos'
 import { useAuth } from '../../context/useAuth'
 import { useRecursoPaginado } from '../../hooks/useRecurso'
@@ -105,11 +105,7 @@ export default function Decisiones() {
           {
             clave: 'decision_razon',
             titulo: 'Razón',
-            render: (c) => (
-              <span className="block max-w-64 truncate" title={c.decision_razon ?? ''}>
-                {c.decision_razon || '—'}
-              </span>
-            ),
+            render: (c) => <CeldaTexto ancho="w-64">{c.decision_razon}</CeldaTexto>,
           },
         ]
       : []),
