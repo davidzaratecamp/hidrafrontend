@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Eye, FileSignature } from 'lucide-react'
+import { Download, Eye, FileSignature } from 'lucide-react'
 import { Boton, Cargando, Error, Etiqueta, ModalDocumento } from '../../ui'
 import { fecha } from '../../ui/formato'
 import { useRecurso } from '../../../hooks/useRecurso'
 import { useAuth } from '../../../context/useAuth'
 import api from '../../../services/api'
+import { descargarBlob } from '../../../utils/descargar'
 import ModalFirmarHojaVida from './ModalFirmarHojaVida'
 
 /** Citaciones, evaluaciones, decisión final y estado de la firma electrónica. */
@@ -27,7 +28,7 @@ const TEXTO_ASISTENCIA = { asistio: 'Asistió', no_asistio: 'No asistió' }
 const TONO_FIRMA = { pending: 'ambar', viewed: 'azul', signed: 'verde' }
 const TEXTO_FIRMA = { pending: 'Pendiente de firma', viewed: 'Visto', signed: 'Firmado' }
 
-export default function ExpedienteSeleccion({ candidatoId }) {
+export default function ExpedienteSeleccion({ candidatoId, nombreCandidato }) {
   const { hasPermission } = useAuth()
 
   const { datos, cargando, error } = useRecurso(
@@ -46,6 +47,25 @@ export default function ExpedienteSeleccion({ candidatoId }) {
   // previsualizando ahora mismo.
   const [previsualizando, setPrevisualizando] = useState(null)
   const [firmando, setFirmando] = useState(false)
+  const [descargando, setDescargando] = useState(false)
+  const [errorDescarga, setErrorDescarga] = useState(null)
+
+  // El servidor trae de FirmaCloud la hoja de vida y el tratamiento de datos y los une.
+  async function descargarUnificado() {
+    setDescargando(true)
+    setErrorDescarga(null)
+    try {
+      const blob = await api.get(`/firma/${candidatoId}/unificado`)
+      const nombre = (nombreCandidato || `candidato-${candidatoId}`)
+        .replace(/[\\/:*?"<>|]+/g, '')
+        .trim()
+      descargarBlob(blob, `${nombre}.pdf`)
+    } catch (e) {
+      setErrorDescarga(e.message)
+    } finally {
+      setDescargando(false)
+    }
+  }
 
   if (error) return <Error mensaje={error} />
   if (cargando || !datos) return <Cargando />
@@ -185,6 +205,9 @@ export default function ExpedienteSeleccion({ candidatoId }) {
               <Boton variante="secundario" onClick={() => setPrevisualizando('tratamiento')}>
                 <Eye className="h-4 w-4" /> Tratamiento de datos
               </Boton>
+              <Boton variante="secundario" onClick={descargarUnificado} cargando={descargando}>
+                <Download className="h-4 w-4" /> Descargar ambos en un PDF
+              </Boton>
               {firma.proveedor?.status === 'signed' && hasPermission('firmar_hoja_vida') && (
                 <Boton onClick={() => setFirmando(true)}>
                   <FileSignature className="h-4 w-4" />
@@ -197,6 +220,11 @@ export default function ExpedienteSeleccion({ candidatoId }) {
                 Firmado por Selección: {firma.proveedor.psicologo_signed_by ?? '—'} ·{' '}
                 {fecha(firma.proveedor.psicologo_signed_at, true)}
               </p>
+            )}
+            {errorDescarga && (
+              <div className="w-full">
+                <Error mensaje={errorDescarga} />
+              </div>
             )}
           </div>
         )}
