@@ -145,10 +145,13 @@ export default function PerfilCandidato() {
 
         {pestana === 'ficha' && <Ficha candidato={candidato} candidatoId={candidatoId} />}
         {pestana === 'historial' && <Historial historial={candidato.historial} />}
-        {pestana === 'seleccion' && <ExpedienteSeleccion candidatoId={candidatoId} />}
+        {pestana === 'seleccion' && (
+          <ExpedienteSeleccion candidatoId={candidatoId} nombreCandidato={nombreDe(candidato)} />
+        )}
         {pestana === 'antecedentes' && (
           <Antecedentes
             candidatoId={candidatoId}
+            nombreCandidato={nombreDe(candidato)}
             puedeGestionar={hasPermission('gestionar_antecedentes')}
           />
         )}

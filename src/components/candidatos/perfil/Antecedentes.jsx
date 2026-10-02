@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Eye, ShieldCheck, Upload } from 'lucide-react'
+import { Download, Eye, ShieldCheck, Upload } from 'lucide-react'
 import { Boton, Cargando, Error, Etiqueta, Modal, ModalDocumento } from '../../ui'
 import { fecha } from '../../ui/formato'
 import { AreaTexto, Seleccion } from '../../ui/campos'
 import { useRecurso } from '../../../hooks/useRecurso'
 import api from '../../../services/api'
+import { descargarBlob } from '../../../utils/descargar'
 
 /**
  * Las cuatro verificaciones de antecedentes.
@@ -13,13 +14,32 @@ import api from '../../../services/api'
  * y se adjunta el soporte. El backend valida que el candidato ya haya pasado por
  * la entrevista: esa regla vivía solo en el frontend en el sistema anterior.
  */
-export default function Antecedentes({ candidatoId, puedeGestionar }) {
+export default function Antecedentes({ candidatoId, nombreCandidato, puedeGestionar }) {
   const { datos: lista, cargando, error, recargar } = useRecurso(
     () => api.get(`/antecedentes/candidatos/${candidatoId}`),
     [candidatoId]
   )
   const [editando, setEditando] = useState(null)
   const [previsualizando, setPrevisualizando] = useState(null)
+  const [descargando, setDescargando] = useState(false)
+  const [errorDescarga, setErrorDescarga] = useState(null)
+
+  // Une en el servidor todos los soportes cargados en un solo PDF.
+  async function descargarUnificado() {
+    setDescargando(true)
+    setErrorDescarga(null)
+    try {
+      const blob = await api.get(`/antecedentes/candidatos/${candidatoId}/unificado`)
+      const nombre = (nombreCandidato || `candidato-${candidatoId}`)
+        .replace(/[\\/:*?"<>|]+/g, '')
+        .trim()
+      descargarBlob(blob, `${nombre}.pdf`)
+    } catch (e) {
+      setErrorDescarga(e.message)
+    } finally {
+      setDescargando(false)
+    }
+  }
 
   if (error) return <Error mensaje={error} onReintentar={recargar} />
   if (cargando || !lista) return <Cargando />
@@ -31,8 +51,19 @@ export default function Antecedentes({ candidatoId, puedeGestionar }) {
         ? 'text-red-500'
         : 'text-gray-300'
 
+  const haySoportes = lista.some((a) => a.documento_id)
+
   return (
     <>
+      {haySoportes && (
+        <div className="mb-3 flex flex-col items-end gap-2">
+          <Boton variante="secundario" onClick={descargarUnificado} cargando={descargando}>
+            <Download className="h-4 w-4" /> Descargar todos en un PDF
+          </Boton>
+          <Error mensaje={errorDescarga} />
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
         {lista.map((a) => (
           <div key={a.tipo} className="flex flex-wrap items-center justify-between gap-3 p-4">
