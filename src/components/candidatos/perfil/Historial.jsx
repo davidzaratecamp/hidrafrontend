@@ -9,6 +9,18 @@ import { fecha } from '../../ui/formato'
  * reestructuración: con el modelo anterior el estado se sobrescribía y esta
  * vista era imposible de construir.
  */
+/**
+ * Quién hizo el cambio. Sin usuario hay dos orígenes posibles: el propio
+ * candidato desde el formulario público, o el aviso automático del Gestor
+ * Técnico al registrarlo como empleado (`contratacion.service.js`, que deja un
+ * motivo que empieza así).
+ */
+function autor(h) {
+  if (h.usuario) return h.usuario
+  if (h.motivo?.startsWith('Registrado como empleado en Gestor Técnico')) return 'Gestor Técnico (automático)'
+  return 'el candidato'
+}
+
 export default function Historial({ historial }) {
   if (historial.length === 0) return <Vacio icono={History} mensaje="Sin movimientos." />
 
@@ -31,8 +43,7 @@ export default function Historial({ historial }) {
             </p>
             {h.motivo && <p className="mt-0.5 text-xs text-gray-500 italic">{h.motivo}</p>}
           </div>
-          {/* Sin usuario = lo hizo el propio candidato desde el formulario público. */}
-          <span className="shrink-0 text-xs text-gray-400">{h.usuario ?? 'el candidato'}</span>
+          <span className="shrink-0 text-xs text-gray-400">{autor(h)}</span>
         </li>
       ))}
     </ol>

@@ -5,6 +5,7 @@ import {
   Briefcase,
   ClipboardCheck,
   FileText,
+  GraduationCap,
   KeyRound,
   LayoutDashboard,
   UserPlus,
@@ -122,6 +123,21 @@ export const SECCIONES = [
         // Administrador— para controlar quién VE el enlace (mismo patrón que
         // el resto de este menú).
         permiso: 'evaluar_candidatos',
+      },
+    ],
+  },
+  {
+    titulo: 'Formación',
+    items: [
+      {
+        // Último paso del embudo (migración 019): rol Formación marca asistencia
+        // y activo/baja de quienes pasan a formación, y envía los activos a RRHH
+        // (Gestor Técnico). Para el rol Formación es su única pantalla, y por
+        // tanto su destino tras iniciar sesión (`RoleRedirect`).
+        path: '/formacion',
+        icon: GraduationCap,
+        label: 'Formación',
+        permisos: ['gestionar_formacion', 'enviar_contratacion'],
       },
     ],
   },
