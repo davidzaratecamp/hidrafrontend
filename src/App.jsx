@@ -21,6 +21,8 @@ import RolesPermisos from './components/usuarios/RolesPermisos'
 import Desprendibles from './components/desprendibles/Desprendibles'
 import BaseHistorica from './components/historico/BaseHistorica'
 import FormularioCandidato from './components/candidato/FormularioCandidato'
+import Formacion from './components/formacion/Formacion'
+import LoteContratacion from './components/contratacion/LoteContratacion'
 
 /**
  * Rutas de la aplicación.
@@ -93,6 +95,15 @@ const PANTALLAS = [
   // "Candidatos Staff": mismo permiso que "Candidatos" en la ruta (`ver_candidatos`),
   // el menú es lo que lo restringe a Selección/Administrador (ver menu.js).
   { path: '/seleccion/staff', permission: 'ver_candidatos', Componente: CandidatosStaff },
+  // Rol Formación (migración 019): asistencia y activo/baja de quienes pasan a
+  // formación, y envío a RRHH (Gestor Técnico). `enviar_contratacion` desde la
+  // 019 es de Formación y Administrador (ya no de Selección).
+  {
+    path: '/formacion',
+    permissions: ['gestionar_formacion', 'enviar_contratacion'],
+    Componente: Formacion,
+  },
+  { path: '/formacion/lotes/:loteId', permission: 'enviar_contratacion', Componente: LoteContratacion },
 
   { path: '/usuarios', permission: 'ver_usuarios', Componente: GestionUsuarios },
   { path: '/roles', permission: 'ver_usuarios', Componente: RolesPermisos },
