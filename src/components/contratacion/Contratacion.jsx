@@ -11,8 +11,9 @@ import { rutaLote } from './rutas'
 
 /**
  * Contratación: envío de candidatos al Gestor Técnico (RRHH) y seguimiento de
- * los lotes. Piezas que usa la pantalla "Formación" (`formacion/Formacion.jsx`):
- * desde la migración 019 es el rol Formación quien envía, no Selección.
+ * los lotes. Piezas que usa la pantalla "Contratación" (`PantallaContratacion.jsx`):
+ * desde la migración 020 envía el rol Contratación (antes Formación, y antes
+ * Selección).
  *
  * En Gestor, RRHH completa lo que Hydra no tiene (contrato, salario, seguridad
  * social…) y los registra como empleados; cuando lo hace, Gestor avisa y el

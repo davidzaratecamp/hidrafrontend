@@ -8,6 +8,7 @@ import {
   GraduationCap,
   KeyRound,
   LayoutDashboard,
+  Send,
   UserPlus,
   Users,
   UsersRound,
@@ -130,14 +131,27 @@ export const SECCIONES = [
     titulo: 'Formación',
     items: [
       {
-        // Último paso del embudo (migración 019): rol Formación marca asistencia
-        // y activo/baja de quienes pasan a formación, y envía los activos a RRHH
-        // (Gestor Técnico). Para el rol Formación es su única pantalla, y por
+        // Rol Formación (migraciones 019 y 020): asistencia y activo/baja de
+        // los Agentes en formación. Para ese rol es su única pantalla, y por
         // tanto su destino tras iniciar sesión (`RoleRedirect`).
         path: '/formacion',
         icon: GraduationCap,
         label: 'Formación',
-        permisos: ['gestionar_formacion', 'enviar_contratacion'],
+        permiso: 'gestionar_formacion',
+      },
+    ],
+  },
+  {
+    titulo: 'Contratación',
+    items: [
+      {
+        // Rol Contratación (migración 020): Staff y Agentes que pasaron
+        // formación, y envío de lotes a RRHH (Gestor Técnico). Única pantalla
+        // de ese rol, y su destino tras iniciar sesión.
+        path: '/contratacion',
+        icon: Send,
+        label: 'Contratación',
+        permiso: 'enviar_contratacion',
       },
     ],
   },
