@@ -203,7 +203,7 @@ export default function LoteContratacion() {
       descripcion={`${lote.lote_externo_id} · Ingreso sugerido ${fecha(lote.fecha_ingreso_sugerida)} · Enviado ${fecha(lote.created_at, true)}${lote.creado_por ? ` por ${lote.creado_por}` : ''}`}
       acciones={
         <>
-          <BotonEnlace to="/formacion">
+          <BotonEnlace to="/contratacion">
             <ArrowLeft className="h-4 w-4" /> Volver
           </BotonEnlace>
           <Boton variante="secundario" onClick={recargar} cargando={cargando}>
