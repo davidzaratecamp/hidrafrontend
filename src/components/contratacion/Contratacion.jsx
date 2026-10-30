@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Inbox, Send } from 'lucide-react'
+import { AlertTriangle, Inbox, Send } from 'lucide-react'
 import { Boton, Error, Etiqueta, Modal, Progreso } from '../ui'
 import { fecha } from '../ui/formato'
 import { CeldaDoble, Tabla } from '../ui/Tabla'
-import { Texto } from '../ui/campos'
+import { AreaTexto, Texto } from '../ui/campos'
 import { useRecurso } from '../../hooks/useRecurso'
 import api from '../../services/api'
 import { rutaLote } from './rutas'
@@ -26,6 +26,10 @@ export function ModalEnviarLote({ candidatos, onCerrar, onEnviado }) {
   const [fechaIngreso, setFechaIngreso] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
+  // Nota para RRHH, solo de quien tiene antecedentes sin soporte (migración 021 de Hydra).
+  const [notas, setNotas] = useState({})
+  const sinAntecedentes = candidatos.filter((c) => c.antecedentesFaltantes?.length > 0)
+  const faltanNotas = sinAntecedentes.some((c) => !(notas[c.id] ?? '').trim())
 
   const enviar = async (e) => {
     e.preventDefault()
@@ -36,6 +40,9 @@ export function ModalEnviarLote({ candidatos, onCerrar, onEnviado }) {
         nombre: nombre.trim(),
         ...(fechaIngreso ? { fechaIngresoSugerida: fechaIngreso } : {}),
         candidatoIds: candidatos.map((c) => c.id),
+        ...(sinAntecedentes.length > 0
+          ? { notasAntecedentes: Object.fromEntries(sinAntecedentes.map((c) => [String(c.id), notas[c.id].trim()])) }
+          : {}),
       })
       onEnviado(lote)
     } catch (err) {
@@ -83,6 +90,28 @@ export function ModalEnviarLote({ candidatos, onCerrar, onEnviado }) {
           </ul>
         </div>
 
+        {sinAntecedentes.length > 0 && (
+          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="flex items-start gap-2 text-sm text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              Estos candidatos no tienen todos los antecedentes cargados. Deja una nota para RRHH explicando por qué.
+            </p>
+            {sinAntecedentes.map((c) => (
+              <AreaTexto
+                key={c.id}
+                etiqueta={c.nombre}
+                requerido
+                filas={2}
+                maxLength={500}
+                value={notas[c.id] ?? ''}
+                onChange={(e) => setNotas((n) => ({ ...n, [c.id]: e.target.value }))}
+                ayuda={`Falta: ${c.antecedentesFaltantes.join(', ')}`}
+                placeholder="Ej. La Procuraduría está en trámite; la trae el primer día."
+              />
+            ))}
+          </div>
+        )}
+
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <p>{error.mensaje}</p>
@@ -100,7 +129,7 @@ export function ModalEnviarLote({ candidatos, onCerrar, onEnviado }) {
           <Boton type="button" variante="secundario" onClick={onCerrar} disabled={guardando}>
             Cancelar
           </Boton>
-          <Boton type="submit" cargando={guardando} disabled={nombre.trim().length < 3}>
+          <Boton type="submit" cargando={guardando} disabled={nombre.trim().length < 3 || faltanNotas}>
             <Send className="h-4 w-4" /> Enviar {candidatos.length}
           </Boton>
         </div>

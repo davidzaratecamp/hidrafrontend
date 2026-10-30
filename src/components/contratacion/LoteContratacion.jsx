@@ -31,7 +31,22 @@ const ESTADO_ENVIO = {
   fallido: { texto: 'Fallido', tono: 'rojo' },
 }
 
-const TIPO_ENVIO = { lote: 'Envío del lote', actualizacion: 'Reenvío de datos', cancelacion: 'Cancelación' }
+const TIPO_ENVIO = { lote: 'Envío del lote', actualizacion: 'Reenvío de datos', cancelacion: 'Cancelación', documento: 'Documento' }
+
+// Envíos de documentos (migración 021): el tipo va al final de la ruta.
+const NOMBRE_DOCUMENTO = {
+  hoja_vida_firmada: 'Hoja de vida firmada',
+  tratamiento_datos_firmado: 'Tratamiento de datos firmado',
+  antecedente_adres: 'ADRES',
+  antecedente_policia: 'Antecedentes de Policía',
+  antecedente_comparendos: 'Comparendos',
+  antecedente_procuraduria: 'Procuraduría',
+}
+const tituloEnvio = (e) => {
+  if (e.tipo !== 'documento') return TIPO_ENVIO[e.tipo] ?? e.tipo
+  const tipo = e.ruta?.split('/').pop()
+  return `Documento: ${NOMBRE_DOCUMENTO[tipo] ?? tipo}`
+}
 
 // Mientras haya algo en camino, refresca cada 5 s (el despachador de Hydra corre
 // al instante y, si falla, cada 30 s; el aviso de Gestor llega cuando RRHH registra).
@@ -117,6 +132,11 @@ export default function LoteContratacion() {
                 <span className="text-xs text-gray-500">{c.detalle}</span>
               </CeldaTexto>
             )}
+            {c.nota_antecedentes && (
+              <CeldaTexto ancho="w-72">
+                <span className="text-xs text-amber-700">Nota de antecedentes: {c.nota_antecedentes}</span>
+              </CeldaTexto>
+            )}
           </div>
         )
       },
@@ -155,7 +175,7 @@ export default function LoteContratacion() {
       titulo: 'Petición',
       render: (e) => (
         <CeldaDoble
-          principal={TIPO_ENVIO[e.tipo] ?? e.tipo}
+          principal={tituloEnvio(e)}
           secundario={e.candidato_id ? lote.candidatos.find((c) => c.candidato_id === e.candidato_id)?.nombre : null}
         />
       ),

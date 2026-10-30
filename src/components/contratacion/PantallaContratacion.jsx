@@ -154,7 +154,14 @@ function PorContratar() {
       titulo: 'Envío',
       render: (c) =>
         c.elegible ? (
-          <Etiqueta texto="Listo para enviar" tono="verde" />
+          <div className="flex flex-col items-start gap-1">
+            <Etiqueta texto="Listo para enviar" tono="verde" />
+            {c.antecedentesFaltantes?.length > 0 && (
+              <span className="text-xs text-amber-700" title={c.antecedentesFaltantes.join(', ')}>
+                Sin {c.antecedentesFaltantes.length} antecedente(s): pedirá nota
+              </span>
+            )}
+          </div>
         ) : (
           <CeldaTexto ancho="w-48">
             <span className="text-xs text-gray-500">{c.motivoNoElegible}</span>
