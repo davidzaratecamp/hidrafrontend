@@ -9,6 +9,7 @@ import { AreaTexto } from '../ui/campos'
 import { useRecurso } from '../../hooks/useRecurso'
 import { useAuth } from '../../context/useAuth'
 import api from '../../services/api'
+import { ESTADO_EXAMEN, EVENTO_EXAMEN, quienMarco } from './examenes'
 
 /**
  * Seguimiento de un lote enviado a Gestor: en qué va cada candidato del lado de
@@ -25,13 +26,21 @@ const ESTADO_CANDIDATO = {
   error: { texto: 'Error', tono: 'rojo' },
 }
 
+const CIERRE_POR_EXAMENES = ['no_apto_examenes', 'no_continua_examenes']
+
 const ESTADO_ENVIO = {
   pendiente: { texto: 'Pendiente', tono: 'ambar' },
   enviado: { texto: 'Entregado', tono: 'verde' },
   fallido: { texto: 'Fallido', tono: 'rojo' },
 }
 
-const TIPO_ENVIO = { lote: 'Envío del lote', actualizacion: 'Reenvío de datos', cancelacion: 'Cancelación', documento: 'Documento' }
+const TIPO_ENVIO = {
+  lote: 'Envío del lote',
+  actualizacion: 'Reenvío de datos',
+  cancelacion: 'Cancelación',
+  documento: 'Documento',
+  continuidad: 'Decisión sobre exámenes médicos',
+}
 
 // Envíos de documentos (migración 021): el tipo va al final de la ruta.
 const NOMBRE_DOCUMENTO = {
@@ -122,7 +131,11 @@ export default function LoteContratacion() {
       clave: 'estado',
       titulo: 'Estado en Gestor',
       render: (c) => {
-        const estado = ESTADO_CANDIDATO[c.estado] ?? { texto: c.estado }
+        // Migración 022: un "no aprobó" de SST también llega como descarte.
+        const estado =
+          c.examen_estado === 'no_aprobado'
+            ? { texto: 'No apto (exámenes SST)', tono: 'rojo' }
+            : (ESTADO_CANDIDATO[c.estado] ?? { texto: c.estado })
         return (
           <div>
             <Etiqueta texto={estado.texto} tono={estado.tono} />
@@ -141,6 +154,34 @@ export default function LoteContratacion() {
         )
       },
     },
+    {
+      // Migración 022: lo que marca SST en Gestor; la última marca con su nota.
+      clave: 'examen_estado',
+      titulo: 'Exámenes médicos',
+      render: (c) => {
+        if (!c.examen_estado) return <span className="text-xs text-gray-400">Sin marcas de SST</span>
+        const estado = ESTADO_EXAMEN[c.examen_estado] ?? { texto: c.examen_estado }
+        const ultima = c.examenes?.at(-1)
+        return (
+          <div>
+            <Etiqueta texto={estado.texto} tono={estado.tono} />
+            {ultima && (
+              <CeldaTexto ancho="w-64">
+                <span className="text-xs text-gray-500">
+                  {EVENTO_EXAMEN[ultima.evento] ?? ultima.evento}
+                  {ultima.nota ? `: ${ultima.nota}` : ''} ({quienMarco(ultima)}, {fecha(ultima.marcado_en, true)})
+                </span>
+              </CeldaTexto>
+            )}
+            {c.examenes?.length > 1 && (
+              <Link to="/contratacion/examenes" className="text-xs text-blue-600 hover:underline">
+                Ver traza ({c.examenes.length})
+              </Link>
+            )}
+          </div>
+        )
+      },
+    },
     { clave: 'estado_hydra', titulo: 'Estado en Hydra', render: (c) => c.estado_hydra.replaceAll('_', ' ') },
     { clave: 'version', titulo: 'Versión', alineacion: 'center' },
     {
@@ -148,7 +189,8 @@ export default function LoteContratacion() {
       titulo: 'Acciones',
       alineacion: 'right',
       render: (c) =>
-        c.estado === 'registrado' ? null : (
+        // Migración 022: tras exámenes médicos el candidato queda en un estado terminal de Hydra.
+        c.estado === 'registrado' || CIERRE_POR_EXAMENES.includes(c.estado_hydra) ? null : (
           <div className="flex justify-end gap-2">
             <Boton
               variante="secundario"
