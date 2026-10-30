@@ -24,6 +24,7 @@ import FormularioCandidato from './components/candidato/FormularioCandidato'
 import Formacion from './components/formacion/Formacion'
 import LoteContratacion from './components/contratacion/LoteContratacion'
 import PantallaContratacion from './components/contratacion/PantallaContratacion'
+import ExamenesMedicos from './components/contratacion/ExamenesMedicos'
 
 /**
  * Rutas de la aplicación.
@@ -104,6 +105,9 @@ const PANTALLAS = [
   // Administrador.
   { path: '/contratacion', permission: 'enviar_contratacion', Componente: PantallaContratacion },
   { path: '/contratacion/lotes/:loteId', permission: 'enviar_contratacion', Componente: LoteContratacion },
+  // Exámenes médicos que marca SST en Gestor (migración 022): selección decide
+  // la continuidad de quien no asistió.
+  { path: '/contratacion/examenes', permission: 'decidir_continuidad_examenes', Componente: ExamenesMedicos },
 
   { path: '/usuarios', permission: 'ver_usuarios', Componente: GestionUsuarios },
   { path: '/roles', permission: 'ver_usuarios', Componente: RolesPermisos },

@@ -9,6 +9,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Send,
+  Stethoscope,
   UserPlus,
   Users,
   UsersRound,
@@ -152,6 +153,14 @@ export const SECCIONES = [
         icon: Send,
         label: 'Contratación',
         permiso: 'enviar_contratacion',
+      },
+      {
+        // Migración 022: lo que SST marca en Gestor sobre los exámenes médicos.
+        // Selección decide aquí si da continuidad a quien no asistió.
+        path: '/contratacion/examenes',
+        icon: Stethoscope,
+        label: 'Exámenes médicos',
+        permiso: 'decidir_continuidad_examenes',
       },
     ],
   },
