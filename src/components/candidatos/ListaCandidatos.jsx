@@ -99,7 +99,14 @@ const PASOS_FORMULARIO = 6
 
 export default function ListaCandidatos({ segmento }) {
   const navegar = useNavigate()
-  const { hasPermission } = useAuth()
+  const { hasPermission, isRole, hasAnyRole } = useAuth()
+  // Reclutamiento no descarga el Excel desde "Candidatos" (pedido de negocio,
+  // 2026-11-20). Conserva el permiso `generar_reportes_seleccion` porque lo
+  // usa para el Excel de la Base histórica; aquí solo se oculta el botón. Un
+  // usuario que además sea Selección o Administrador sí lo ve.
+  const puedeDescargarExcel =
+    hasPermission('generar_reportes_seleccion') &&
+    !(isRole('reclutamiento') && !hasAnyRole('seleccion', 'administrador'))
   const { catalogos } = useCatalogos()
 
   const [estado, setEstado] = useState('')
@@ -419,7 +426,7 @@ export default function ListaCandidatos({ segmento }) {
         <div className="flex gap-2">
           {/* Todos los candidatos de la base nueva, sin filtrar por citación
               ni decisión — FECHA es la de registro. Sin rango, los últimos 100. */}
-          {hasPermission('generar_reportes_seleccion') && (
+          {puedeDescargarExcel && (
             <Boton variante="secundario" onClick={() => setModal({ tipo: 'excel-todos' })}>
               <Download className="h-4 w-4" /> Descargar Excel
             </Boton>
