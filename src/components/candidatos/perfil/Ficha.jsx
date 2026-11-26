@@ -204,6 +204,7 @@ export default function Ficha({ candidato: c, candidatoId }) {
           <Dato etiqueta="Contacto por llamada" valor={siNo(c.contacto_llamada)} />
           <Dato etiqueta="Contacto por WhatsApp" valor={siNo(c.contacto_whatsapp)} />
           <Dato etiqueta="Perfil" valor={c.perfil} />
+          <Dato etiqueta="Experiencia" valor={c.experiencia_laboral} />
           <Dato etiqueta="Citado" valor={siNo(c.citado)} />
           <Dato etiqueta="Registrado" valor={fecha(c.created_at)} />
         </dl>

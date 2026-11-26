@@ -112,6 +112,14 @@ export default function CandidatoCampos({ datos, set, errorDe, catalogos, modo =
           error={errorDe('perfil')}
           maxLength={255}
         />
+        <Seleccion
+          etiqueta="Experiencia"
+          requerido
+          opciones={catalogos.experiencias_laborales}
+          value={datos.experienciaLaboral ?? ''}
+          onChange={(e) => set({ experienciaLaboral: e.target.value })}
+          error={errorDe('experienciaLaboral')}
+        />
         {modo === 'crear' ? (
           <>
             <SiNo

@@ -58,6 +58,7 @@ export default function EditarCandidato() {
         fuenteReclutamiento: candidato.fuente_reclutamiento ?? '',
         tipificacionLlamada: candidato.tipificacion_llamada ?? '',
         perfil: candidato.perfil ?? '',
+        experienciaLaboral: candidato.experiencia_laboral ?? '',
         citado: candidato.citado,
       })
     }
