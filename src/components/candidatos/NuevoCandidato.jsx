@@ -18,7 +18,7 @@ import CandidatoCampos from './CandidatoCampos'
  * "BASE RECLUTAMIENTO", que es el formato con el que trabaja el equipo:
  *
  *   FECHA · ANALISTA · CAMPAÑA · CARGO · NOMBRE · TIPO DE DOC · DOCUMENTO ·
- *   EDAD · CORREO · CONTACTO (LLAMADA / WHATSAPP) · PERFIL · CITADO ·
+ *   EDAD · CORREO · CONTACTO (LLAMADA / WHATSAPP) · PERFIL · EXPERIENCIA · CITADO ·
  *   ESTADO GESTIÓN RECLUTAMIENTO
  *
  * Notas sobre ese orden:
