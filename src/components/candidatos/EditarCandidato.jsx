@@ -43,7 +43,13 @@ export default function EditarCandidato() {
   // resincronizara en cada recarga de `candidato`, se perdería lo que el
   // usuario ya haya escrito.
   useEffect(() => {
-    if (candidato && datos === null) {
+    if (candidato && listo && datos === null) {
+      // Una experiencia retirada del catálogo (migración 024) no se precarga:
+      // el formulario la reenviaría y el backend la rechaza por inválida, así
+      // que el candidato no se podría guardar sin tocar ese campo.
+      const experienciaVigente = catalogos.experiencias_laborales?.some(
+        (o) => o.codigo === candidato.experiencia_laboral
+      )
       setDatos({
         nombreCompleto: nombreDe(candidato),
         tipoDocumento: candidato.tipo_documento ?? '',
@@ -58,11 +64,11 @@ export default function EditarCandidato() {
         fuenteReclutamiento: candidato.fuente_reclutamiento ?? '',
         tipificacionLlamada: candidato.tipificacion_llamada ?? '',
         perfil: candidato.perfil ?? '',
-        experienciaLaboral: candidato.experiencia_laboral ?? '',
+        experienciaLaboral: experienciaVigente ? candidato.experiencia_laboral : '',
         citado: candidato.citado,
       })
     }
-  }, [candidato, datos])
+  }, [candidato, listo, catalogos, datos])
 
   const set = (cambios) => setDatos((d) => ({ ...d, ...cambios }))
   const errorDe = (campo) => errores[`body.${campo}`]
